@@ -212,23 +212,23 @@ textarea:focus {
 .language-toggles {
   display: flex;
   justify-content: center;
-  margin: 20px auto 0 auto;
+  margin: 15px auto 5px auto;
   flex-wrap: wrap; /* Allow wrapping on very small screens */
   max-width: 100%;
   gap: 10px; /* Add gap between buttons when they wrap */
 }
 
 .language-toggle {
-  width: 140px;
-  height: 60px;
-  margin: 0 15px;
-  background-color: #D3D3D3;
+  width: 120px;
+  height: 40px;
+  margin: 0 10px;
+  background-color: #f0f0f0;
   color: #333;
-  border: none;
-  border-radius: 25px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
   cursor: pointer;
   transition: transform 0.3s ease, background-color 0.3s ease;
-  font-size: 22px;
+  font-size: 16px;
   font-family: 'Open Sans', sans-serif;
 }
 
@@ -248,10 +248,10 @@ textarea:focus {
   font-size: 18px;
 }
 
-/* Controls container */
-.controls-container {
+/* Parent access container */
+.parent-access-container {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin: 20px auto;
   max-width: 800px;

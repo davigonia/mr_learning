@@ -234,9 +234,10 @@ function App() {
   
   // Function to test voice
   const testVoice = (voiceType) => {
-    const testText = language === 'english' ? 
+    // Use English text for English voices, and Cantonese text for Cantonese voices
+    const testText = voiceType === 'english' ? 
       'This is a test of the selected voice.' : 
-      '這是所選聲音的測試。';
+      '我啡啡單單試下這把聲音。'; // Cantonese text: "Let me test this voice."
     
     const utterance = new SpeechSynthesisUtterance(testText);
     
@@ -343,22 +344,7 @@ function App() {
         <div className="title-decoration"></div>
       </div>
       
-      <div className="controls-container">
-        <div className="language-toggles">
-          <button 
-            className={`language-toggle ${language === 'english' ? 'active' : ''}`}
-            onClick={toggleLanguage}
-          >
-            English
-          </button>
-          <button 
-            className={`language-toggle ${language === 'cantonese' ? 'active' : ''}`}
-            onClick={toggleLanguage}
-          >
-            廣東話
-          </button>
-        </div>
-        
+      <div className="parent-access-container">
         <button 
           className="parent-access-button"
           onClick={toggleParentControls}
@@ -389,6 +375,21 @@ function App() {
             aria-label={language === 'english' ? 'Voice Input' : '語音輸入'}
           >
             🎤
+          </button>
+        </div>
+        
+        <div className="language-toggles">
+          <button 
+            className={`language-toggle ${language === 'english' ? 'active' : ''}`}
+            onClick={toggleLanguage}
+          >
+            English
+          </button>
+          <button 
+            className={`language-toggle ${language === 'cantonese' ? 'active' : ''}`}
+            onClick={toggleLanguage}
+          >
+            廣東話
           </button>
         </div>
         
@@ -539,20 +540,7 @@ function App() {
                 </div>
               </div>
               
-              <div className="control-section">
-                <h3>{language === 'english' ? 'Time Limit (minutes)' : '時限 (分鐘)'}</h3>
-                <div className="slider-container">
-                  <input 
-                    type="range" 
-                    min="5" 
-                    max="60" 
-                    step="5" 
-                    value={timeLimit} 
-                    onChange={(e) => setTimeLimit(parseInt(e.target.value))} 
-                  />
-                  <span>{timeLimit}</span>
-                </div>
-              </div>
+
               
               <div className="control-section">
                 <h3>{language === 'english' ? 'Add Banned Words' : '添加禁用詞'}</h3>
@@ -664,6 +652,7 @@ function App() {
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
                     <option value="Google 粵語（香港）">Google 粵語（香港）</option>
+                    <option value="Google 粵語女聲（香港）">Google 粵語女聲（香港）</option>
                   </select>
                   <button 
                     className="test-voice-button"
