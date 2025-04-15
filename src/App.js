@@ -76,37 +76,65 @@ function App() {
     
     // Initialize speech recognition if available
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      
-      recognition.onstart = () => {
-        console.log('Speech recognition started');
-        setIsListening(true);
+      const setupSpeechRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = language === 'english' ? 'en-US' : 'zh-HK';
+        
+        recognition.onstart = () => {
+          setIsListening(true);
+          setError('');
+        };
+        
+        let finalTranscript = '';
+        let autoSubmitTimer = null;
+        
+        recognition.onresult = (event) => {
+          let interimTranscript = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+          
+          const currentTranscript = finalTranscript + interimTranscript;
+          setQuestion(currentTranscript);
+          
+          // Clear any existing timer
+          if (autoSubmitTimer) {
+            clearTimeout(autoSubmitTimer);
+          }
+          
+          // Set a new timer for auto-submission after speech pause
+          if (event.results[event.results.length - 1].isFinal) {
+            autoSubmitTimer = setTimeout(() => {
+              if (currentTranscript.trim() !== '') {
+                handleSubmit();
+              }
+            }, 1500); // 1.5 second delay before auto-submission
+          }
+        };
+        
+        recognition.onerror = (event) => {
+          setError(`Speech recognition error: ${event.error}`);
+          setIsListening(false);
+        };
+        
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+        
+        setSpeechRecognition(recognition);
       };
       
-      recognition.onend = () => {
-        console.log('Speech recognition ended');
-        setIsListening(false);
-      };
-      
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        console.log('Speech recognized:', transcript);
-        setQuestion(transcript);
-      };
-      
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        setError(language === 'english' ? 
-          `Speech recognition error: ${event.error}` : 
-          `語音識別錯誤: ${event.error}`);
-      };
-      
-      setSpeechRecognition(recognition);
+      setupSpeechRecognition();
     } else {
       console.warn('Speech recognition not supported in this browser');
     }
@@ -456,8 +484,9 @@ function App() {
             className="primary-button ask-button"
             onClick={handleSubmit}
             disabled={isLoading || !question.trim()}
+            aria-label={language === 'english' ? 'Ask' : '問問題'}
           >
-            {uiText.askButton}
+            ➤
           </button>
           <button 
             type="button"

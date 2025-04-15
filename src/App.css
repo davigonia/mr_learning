@@ -22,14 +22,13 @@ body {
 }
 
 /* Title styles */
-.app-title {
-  position: relative;
-  display: block; /* Changed from inline-block to block */
-  margin: 0 auto 30px auto; /* Center horizontally with auto margins */
-  white-space: nowrap; /* Prevent line breaks */
-  overflow: hidden; /* Prevent overflow */
-  max-width: 100%; /* Ensure it doesn't exceed container width */
-  text-align: center; /* Ensure text is centered */
+header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 10px 0;
 }
 
 h1 {
@@ -37,9 +36,10 @@ h1 {
   font-size: 72px;
   color: #ff6f61;
   text-shadow: 3px 3px #ffe082;
-  margin-bottom: 0;
+  margin: 0;
   position: relative;
   z-index: 2;
+  text-align: center;
 }
 
 /* Media queries for responsive title */
@@ -47,11 +47,26 @@ h1 {
   h1 {
     font-size: 56px;
   }
+  
+  .question-input {
+    width: calc(100% - 110px);
+  }
 }
 
 @media (max-width: 480px) {
   h1 {
     font-size: 42px;
+  }
+  
+  .question-input {
+    width: calc(100% - 100px);
+    font-size: 18px;
+  }
+  
+  .language-toggle {
+    width: 120px;
+    height: 45px;
+    font-size: 16px;
   }
 }
 
@@ -90,21 +105,25 @@ h1 {
   align-items: center;
 }
 
+/* Question box layout */
+.question-box {
+  position: relative;
+}
+
 /* Question input styles */
 .question-input {
-  width: 100%; /* Full width on mobile */
+  width: calc(100% - 130px); /* Leave space for buttons */
   max-width: 600px; /* Maximum width on larger screens */
   height: 60px;
   font-size: 22px; /* Fixed font size */
-  padding: 15px 20px;
+  padding: 15px 20px 15px 25px;
   border-radius: 30px;
   border: 2px solid #4fc3f7;
   outline: none;
   transition: all 0.3s ease;
   font-family: 'Open Sans', sans-serif;
   box-sizing: border-box; /* Include padding in width calculation */
-  margin: 0 auto; /* Center the input */
-  display: block; /* Block display for proper centering */
+  display: inline-block;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -115,30 +134,28 @@ h1 {
 
 /* Action buttons container */
 .action-buttons {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 25px auto 0 auto;
-  gap: 20px;
-  flex-wrap: wrap; /* Allow wrapping on very small screens */
-  width: 100%;
-  max-width: 500px;
+  gap: 10px;
 }
 
 /* Primary button styles (shared between ask and record) */
 .primary-button {
+  width: 50px;
   height: 50px;
-  padding: 0 25px;
   color: white;
   border: none;
-  border-radius: 25px;
+  border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
-  font-size: 18px;
-  font-weight: bold;
-  font-family: 'Open Sans', sans-serif;
-  min-width: 120px;
+  font-size: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .primary-button:hover {
@@ -214,33 +231,35 @@ h1 {
 .language-toggles {
   display: flex;
   justify-content: center;
-  margin: 20px auto 5px auto;
+  margin: 30px auto 15px auto;
   flex-wrap: wrap; /* Allow wrapping on very small screens */
   max-width: 100%;
-  gap: 10px; /* Add gap between buttons when they wrap */
+  gap: 20px; /* Add gap between buttons when they wrap */
 }
 
 .language-toggle {
-  width: 120px;
-  height: 40px;
-  margin: 0 10px;
-  background-color: #f0f0f0;
+  width: 140px;
+  height: 50px;
+  background-color: white;
   color: #333;
-  border: 1px solid #ddd;
-  border-radius: 20px;
+  border: 2px solid #4fc3f7;
+  border-radius: 25px;
   cursor: pointer;
-  transition: transform 0.3s ease, background-color 0.3s ease;
-  font-size: 16px;
+  transition: all 0.3s ease;
+  font-size: 18px;
+  font-weight: bold;
   font-family: 'Open Sans', sans-serif;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .language-toggle.active {
-  background-color: #FFA500;
+  background-color: #4fc3f7;
+  color: white;
 }
 
 .language-toggle:hover {
-  transform: scale(1.1);
-  background-color: #FFD700;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
 }
 
 /* Error message styles */
@@ -255,7 +274,7 @@ h1 {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 0 auto 30px auto;
+  margin: 0 auto 40px auto;
   max-width: 800px;
   padding: 0 20px;
 }
@@ -266,13 +285,13 @@ h1 {
   color: white;
   border: none;
   border-radius: 25px;
-  padding: 12px 25px;
-  font-size: 18px;
+  padding: 10px 20px;
+  font-size: 16px;
   font-family: 'Open Sans', sans-serif;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
-  width: 200px;
+  width: 150px;
 }
 
 .parent-access-button:hover {
