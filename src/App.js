@@ -30,7 +30,7 @@ function App() {
   
   // Voice profile state
   const [englishVoice, setEnglishVoice] = useState('Google US English');
-  const [cantoneseVoice, setCantoneseVoice] = useState('Google 粵語（香港）');
+  const [cantoneseVoice, setCantoneseVoice] = useState('Google Cantonese (Hong Kong)');
   
   // Question history state
   const [questionHistory, setQuestionHistory] = useState([]);
@@ -237,7 +237,7 @@ function App() {
     // Use English text for English voices, and Cantonese text for Cantonese voices
     const testText = voiceType === 'english' ? 
       'This is a test of the selected voice.' : 
-      '我啡啡單單試下這把聲音。'; // Cantonese text: "Let me test this voice."
+      '你好，這是粵語語音測試。'; // Cantonese text: "Hello, this is a Cantonese voice test."
     
     const utterance = new SpeechSynthesisUtterance(testText);
     
@@ -651,8 +651,8 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    <option value="Google 粵語（香港）">Google 粵語（香港）</option>
-                    <option value="Google 粵語女聲（香港）">Google 粵語女聲（香港）</option>
+                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong) - Male</option>
+                    <option value="Google Cantonese Female (Hong Kong)">Google Cantonese (Hong Kong) - Female</option>
                   </select>
                   <button 
                     className="test-voice-button"
