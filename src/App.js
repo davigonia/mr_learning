@@ -130,7 +130,7 @@ function App() {
   // UI text based on language
   const uiText = {
     askButton: language === 'english' ? 'Ask' : '問',
-    placeholder: language === 'english' ? 'Ask me anything...' : '問我任何問題...',
+    placeholder: language === 'english' ? 'Ask me anything...' : '你想知啲乜？',
     answerPlaceholder: language === 'english' ? 'Your answer will appear here...' : '你的答案會在這裡顯示...',
     loading: language === 'english' ? 'Thinking...' : '思考中...'
   };
@@ -696,20 +696,19 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    {/* Dynamically generate options from available voices */}
+                    {/* Only show Google zh-HK option */}
                     {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
                       .filter(voice => 
-                        voice.lang === 'zh-HK' || 
-                        voice.name.includes('Cantonese') || 
-                        voice.name.includes('粵語')
+                        voice.lang === 'zh-HK' && 
+                        voice.name.includes('Google')
                       )
                       .map(voice => (
                         <option key={voice.name} value={voice.name}>
-                          {voice.name} ({voice.lang})
+                          {voice.name}
                         </option>
                       ))
                     }
-                    {/* Fallback options if no voices are found */}
+                    {/* Fallback option if no voices are found */}
                     <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong)</option>
                   </select>
                   <button 
