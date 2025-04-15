@@ -30,7 +30,7 @@ function App() {
   
   // Voice profile state
   const [englishVoice, setEnglishVoice] = useState('Google US English');
-  const [cantoneseVoice, setCantoneseVoice] = useState('Google Cantonese (Hong Kong)');
+  const [cantoneseVoice, setCantoneseVoice] = useState('Ting-Ting');
   
   // Question history state
   const [questionHistory, setQuestionHistory] = useState([]);
@@ -135,20 +135,38 @@ function App() {
     
     // Get available voices
     const voices = speechSynthesisRef.current.getVoices();
+    console.log('Available voices:', voices.map(v => v.name));
     
     // Set the voice based on the current language
     if (language === 'english') {
-      const selectedVoice = voices.find(voice => voice.name === englishVoice);
+      // For English, try to find Google US English
+      const selectedVoice = voices.find(voice => 
+        voice.name === englishVoice || 
+        voice.name.includes('US English')
+      );
+      
       if (selectedVoice) {
+        console.log('Using English voice:', selectedVoice.name);
         utterance.voice = selectedVoice;
       } else {
+        console.log('Fallback to en-US language');
         utterance.lang = 'en-US';
       }
     } else {
-      const selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      // For Cantonese, try to find Ting-Ting or any Chinese voice
+      const selectedVoice = voices.find(voice => 
+        voice.name === 'Ting-Ting' || 
+        voice.name.includes('Chinese') || 
+        voice.name.includes('Cantonese') ||
+        voice.lang === 'zh-HK' ||
+        voice.lang === 'zh-TW'
+      );
+      
       if (selectedVoice) {
+        console.log('Using Cantonese voice:', selectedVoice.name);
         utterance.voice = selectedVoice;
       } else {
+        console.log('Fallback to zh-HK language');
         utterance.lang = 'zh-HK';
       }
     }
@@ -237,21 +255,46 @@ function App() {
     // Use English text for English voices, and Cantonese text for Cantonese voices
     const testText = voiceType === 'english' ? 
       'This is a test of the selected voice.' : 
-      '你好，這是粵語語音測試。'; // Cantonese text: "Hello, this is a Cantonese voice test."
+      '你好，我叫天天。我可以幫你學習粵語。'; // Cantonese text: "Hello, my name is Ting-Ting. I can help you learn Cantonese."
     
     const utterance = new SpeechSynthesisUtterance(testText);
     
-    // Find the selected voice
+    // Get available voices
     const voices = speechSynthesisRef.current.getVoices();
-    const selectedVoice = voiceType === 'english' ? 
-      voices.find(voice => voice.name === englishVoice) : 
-      voices.find(voice => voice.name === cantoneseVoice);
+    console.log('Testing voice - Available voices:', voices.map(v => v.name));
     
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
+    // Set the voice based on the voice type
+    if (voiceType === 'english') {
+      // For English, try to find Google US English
+      const selectedVoice = voices.find(voice => 
+        voice.name === englishVoice || 
+        voice.name.includes('US English')
+      );
+      
+      if (selectedVoice) {
+        console.log('Testing with English voice:', selectedVoice.name);
+        utterance.voice = selectedVoice;
+      } else {
+        console.log('Testing with fallback to en-US language');
+        utterance.lang = 'en-US';
+      }
     } else {
-      // Fallback to language setting if voice not found
-      utterance.lang = voiceType === 'english' ? 'en-US' : 'zh-HK';
+      // For Cantonese, try to find Ting-Ting or any Chinese voice
+      const selectedVoice = voices.find(voice => 
+        voice.name === 'Ting-Ting' || 
+        voice.name.includes('Chinese') || 
+        voice.name.includes('Cantonese') ||
+        voice.lang === 'zh-HK' ||
+        voice.lang === 'zh-TW'
+      );
+      
+      if (selectedVoice) {
+        console.log('Testing with Cantonese voice:', selectedVoice.name);
+        utterance.voice = selectedVoice;
+      } else {
+        console.log('Testing with fallback to zh-HK language');
+        utterance.lang = 'zh-HK';
+      }
     }
     
     speechSynthesisRef.current.speak(utterance);
@@ -651,8 +694,7 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong) - Male</option>
-                    <option value="Google Cantonese Female (Hong Kong)">Google Cantonese (Hong Kong) - Female</option>
+                    <option value="Ting-Ting">Ting-Ting (天天) - 女聲</option>
                   </select>
                   <button 
                     className="test-voice-button"
