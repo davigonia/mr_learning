@@ -316,82 +316,7 @@ function App() {
       setShowPINModal(false);
       setShowParentControls(true);
     } else {
-      setError(language === 'english' ? 'Incorrect PIN' : '密碼錯誤');
-      setEnteredPIN('');
-    }
-  };
-  
-  // Function to change PIN
-  const changePIN = () => {
-    if (newPIN.length < 4 || newPIN !== confirmPIN) {
-      setPinChangeMessage(language === 'english' ? 
-        'PIN must be at least 4 digits and match confirmation' : 
-        'PIN碼必須至少4位數字且與確認碼相符');
-      return;
-    }
-    
-    setParentalPIN(newPIN);
-    setPinChangeMessage(language === 'english' ? 
-      'PIN changed successfully!' : 
-      'PIN碼已成功更改！');
-    setNewPIN('');
-    setConfirmPIN('');
-    
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      setPinChangeMessage('');
-    }, 3000);
-  };
-  
-  // Function to add banned word
-  const addBannedWord = () => {
-    if (!newBannedWord.trim()) return;
-    
-    if (!bannedWords.includes(newBannedWord.trim().toLowerCase())) {
-      setBannedWords([...bannedWords, newBannedWord.trim().toLowerCase()]);
-    }
-    
-    setNewBannedWord('');
-  };
-  
-  // Function to remove banned word
-  const removeBannedWord = (word) => {
-    setBannedWords(bannedWords.filter(w => w !== word));
-  };
-  
-  // Function to test voice
-  const testVoice = (voiceType) => {
-    // Use English text for English voices, and Cantonese text for Cantonese voices
-    const testText = voiceType === 'english' ? 
-      'This is a test of the selected voice.' : 
-      '你好，這是粵語語音測試。'; // Cantonese text: "Hello, this is a Cantonese voice test."
-    
-    const utterance = new SpeechSynthesisUtterance(testText);
-    
-    // Find the selected voice
-    const voices = speechSynthesisRef.current.getVoices();
-    const selectedVoice = voiceType === 'english' ? 
-      voices.find(voice => voice.name === englishVoice) : 
-      voices.find(voice => voice.name === cantoneseVoice);
-    
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    } else {
-      // Fallback to language setting if voice not found
-      utterance.lang = voiceType === 'english' ? 'en-US' : 'zh-HK';
-    }
-    
-    speechSynthesisRef.current.speak(utterance);
-  };
-  
-  // Function to toggle parental controls
-  const toggleParentControls = () => {
-    if (showParentControls) {
-      setShowParentControls(false);
-      setIsPINCorrect(false);
-      setActiveTab('banned-words');
-    } else {
-      setShowPINModal(true);
+      setError('Incorrect PIN');
       setEnteredPIN('');
     }
   };
@@ -400,28 +325,62 @@ function App() {
   const closePINModal = () => {
     setShowPINModal(false);
     setEnteredPIN('');
+    setError('');
   };
   
-  // Function to change active tab
+  // Function to change tab in parent controls
   const changeTab = (tab) => {
     setActiveTab(tab);
   };
-
-  // Function to handle question submission
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-    
-    if (!question.trim()) {
-      setError(language === 'english' ? 'Please ask a question first!' : '請先提出問題！');
+  
+  // Function to add banned word
+  const addBannedWord = () => {
+    if (newBannedWord && !bannedWords.includes(newBannedWord)) {
+      setBannedWords([...bannedWords, newBannedWord]);
+      setNewBannedWord('');
+    }
+  };
+  
+  // Function to remove banned word
+  const removeBannedWord = (word) => {
+    setBannedWords(bannedWords.filter(w => w !== word));
+  };
+  
+  // Function to change PIN
+  const changePIN = () => {
+    if (newPIN.length !== 4 || !/^\d+$/.test(newPIN)) {
+      setPinChangeMessage('PIN must be 4 digits');
       return;
     }
+    
+    if (newPIN !== confirmPIN) {
+      setPinChangeMessage('PINs do not match');
+      return;
+    }
+    
+    setParentalPIN(newPIN);
+    setNewPIN('');
+    setConfirmPIN('');
+    setPinChangeMessage('PIN changed successfully');
+  };
+  
+  // Function to show PIN modal
+  const showPINPrompt = () => {
+    setShowPINModal(true);
+    setEnteredPIN('');
+    setError('');
+  };
+  
+  // Function to handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!question.trim()) return;
     
     setIsLoading(true);
     setError('');
     
     try {
-      console.log('Calling Netlify function');
-      // Call the Netlify function
       const response = await fetch('/.netlify/functions/ask', {
         method: 'POST',
         headers: {
@@ -436,74 +395,74 @@ function App() {
         }),
       });
       
-      const data = await response.json();
-      console.log('Response received:', data);
-      const answerText = data.answer || 'No answer received';
-      setAnswer(answerText);
-      
-      // Record question and answer in history
-      const timestamp = new Date().toLocaleTimeString();
-      const historyItem = {
-        question,
-        answer: answerText,
-        timestamp,
-        language
-      };
-      setQuestionHistory([historyItem, ...questionHistory]);
-      
-      // Speak the answer if not muted
-      if (!isMuted) {
-        speakText(answerText);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      setAnswer(data.answer);
+      
+      // Add to question history
+      setQuestionHistory([
+        { question, answer: data.answer, timestamp: new Date().toISOString() },
+        ...questionHistory
+      ]);
+      
+      // Speak the answer
+      speakText(data.answer);
+      
     } catch (error) {
-      console.error('Error calling function:', error);
-      setError(language === 'english' ? `Error: ${error.message}` : `錯誤: ${error.message}`);
-      setAnswer('');
+      console.error('Error asking question:', error);
+      setError(language === 'english' ? 
+        'Error communicating with the AI. Please try again.' : 
+        '與AI通信時出錯。請再試一次。');
     } finally {
       setIsLoading(false);
     }
   };
-
+  
+  // Function to clear question history
+  const clearHistory = () => {
+    setQuestionHistory([]);
+  };
+  
   return (
-    <div className="App">
-      <div className="app-title">
-        <h1>Mr Learning</h1>
-        <div className="title-decoration"></div>
-      </div>
-      
-      <div className="parent-access-container">
+    <div className="app-container">
+      <header>
+        <h1>Mr. Learning</h1>
         <button 
           className="parent-access-button"
-          onClick={toggleParentControls}
+          onClick={showPINPrompt}
         >
-          {language === 'english' ? 'Parent Access' : '家長存取'}
+          Parent Access
         </button>
-      </div>
+      </header>
       
       <div className="question-box">
-        <textarea 
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder={uiText.placeholder}
-        />
-        
-        <div className="button-container">
-          <button 
-            className="ask-button" 
-            onClick={handleSubmit}
+        <form onSubmit={handleSubmit}>
+          <input 
+            type="text" 
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder={uiText.placeholder}
             disabled={isLoading}
+          />
+          <button 
+            type="submit" 
+            disabled={isLoading || !question.trim()}
           >
             {uiText.askButton}
           </button>
           <button 
-            className={`mic-button ${isListening ? 'active' : ''}`}
+            type="button"
+            className={`voice-input-button ${isListening ? 'active' : ''}`}
             onClick={toggleSpeechRecognition}
             disabled={isLoading}
             aria-label={language === 'english' ? 'Voice Input' : '語音輸入'}
           >
             🎤
           </button>
-        </div>
+        </form>
         
         <div className="language-toggles">
           <button 
@@ -542,8 +501,8 @@ function App() {
       {showPINModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>{language === 'english' ? 'Parent Access' : '家長存取'}</h2>
-            <p>{language === 'english' ? 'Enter PIN to access parental controls' : '輸入PIN碼以存取家長控制'}</p>
+            <h2>Parent Access</h2>
+            <p>Enter PIN to access parental controls</p>
             
             <input 
               type="password" 
@@ -554,41 +513,8 @@ function App() {
             />
             
             <div className="modal-buttons">
-              <button onClick={verifyPIN}>
-                {language === 'english' ? 'Submit' : '提交'}
-              </button>
-              <button onClick={closePINModal}>
-                {language === 'english' ? 'Cancel' : '取消'}
-              </button>
-            </div>
-            
-            {error && <div className="error-message">{error}</div>}
-          </div>
-        </div>
-      )}
-      
-      {/* PIN Modal */}
-      {showPINModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>{language === 'english' ? 'Parent Access' : '家長存取'}</h2>
-            <p>{language === 'english' ? 'Enter PIN to access parental controls' : '輸入PIN碼以存取家長控制'}</p>
-            
-            <input 
-              type="password" 
-              value={enteredPIN} 
-              onChange={handlePINEntry}
-              placeholder="PIN"
-              maxLength="4"
-            />
-            
-            <div className="modal-buttons">
-              <button onClick={verifyPIN}>
-                {language === 'english' ? 'Submit' : '提交'}
-              </button>
-              <button onClick={closePINModal}>
-                {language === 'english' ? 'Cancel' : '取消'}
-              </button>
+              <button onClick={verifyPIN}>Submit</button>
+              <button onClick={closePINModal}>Cancel</button>
             </div>
             
             {error && <div className="error-message">{error}</div>}
@@ -599,32 +525,32 @@ function App() {
       {/* Parental Control Panel */}
       {showParentControls && (
         <div className="parent-control-panel">
-          <h2>{language === 'english' ? 'Parental Controls' : '家長控制'}</h2>
+          <h2>Parental Controls</h2>
           
           <div className="tab-navigation">
             <button 
               className={`tab-button ${activeTab === 'banned-words' ? 'active' : ''}`}
               onClick={() => changeTab('banned-words')}
             >
-              {language === 'english' ? 'Banned Words' : '禁用詞彙'}
+              Banned Words
             </button>
             <button 
               className={`tab-button ${activeTab === 'pin' ? 'active' : ''}`}
               onClick={() => changeTab('pin')}
             >
-              {language === 'english' ? 'Change PIN' : '更改PIN'}
+              Change PIN
             </button>
             <button 
               className={`tab-button ${activeTab === 'voice' ? 'active' : ''}`}
               onClick={() => changeTab('voice')}
             >
-              {language === 'english' ? 'Voice Settings' : '語音設置'}
+              Voice Settings
             </button>
             <button 
               className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
               onClick={() => changeTab('history')}
             >
-              {language === 'english' ? 'History' : '歷史記錄'}
+              History
             </button>
           </div>
           
@@ -632,7 +558,7 @@ function App() {
           {activeTab === 'banned-words' && (
             <div className="tab-content">
               <div className="control-section">
-                <h3>{language === 'english' ? 'Content Filtering' : '內容過濾'}</h3>
+                <h3>Content Filtering</h3>
                 <div className="radio-group">
                   <label>
                     <input 
@@ -642,7 +568,7 @@ function App() {
                       checked={contentFiltering === 'none'} 
                       onChange={() => setContentFiltering('none')} 
                     />
-                    {language === 'english' ? 'None' : '無'}
+                    None
                   </label>
                   <label>
                     <input 
@@ -652,7 +578,7 @@ function App() {
                       checked={contentFiltering === 'moderate'} 
                       onChange={() => setContentFiltering('moderate')} 
                     />
-                    {language === 'english' ? 'Moderate' : '中等'}
+                    Moderate
                   </label>
                   <label>
                     <input 
@@ -662,7 +588,7 @@ function App() {
                       checked={contentFiltering === 'strict'} 
                       onChange={() => setContentFiltering('strict')} 
                     />
-                    {language === 'english' ? 'Strict' : '嚴格'}
+                    Strict
                   </label>
                 </div>
               </div>
@@ -670,16 +596,17 @@ function App() {
 
               
               <div className="control-section">
-                <h3>{language === 'english' ? 'Add Banned Words' : '添加禁用詞'}</h3>
+                <h3>Add Banned Words</h3>
+                <p className="note">Enter words in English or Cantonese that will be banned in both languages</p>
                 <div className="banned-words-input">
                   <input 
                     type="text" 
                     value={newBannedWord}
                     onChange={(e) => setNewBannedWord(e.target.value)}
-                    placeholder={language === 'english' ? 'Enter word to ban' : '輸入要禁用的詞'}
+                    placeholder="Enter word to ban"
                   />
                   <button onClick={addBannedWord}>
-                    {language === 'english' ? 'Add' : '添加'}
+                    Add
                   </button>
                 </div>
                 
@@ -700,7 +627,7 @@ function App() {
                     </ul>
                   ) : (
                     <p className="no-words">
-                      {language === 'english' ? 'No banned words added yet' : '尚未添加禁用詞'}
+                      No banned words added yet
                     </p>
                   )}
                 </div>
@@ -713,7 +640,7 @@ function App() {
             <div className="tab-content">
               <div className="password-change-container">
                 <div className="password-input-group">
-                  <label>{language === 'english' ? 'New PIN' : '新PIN碼'}</label>
+                  <label>New PIN</label>
                   <input 
                     type="password" 
                     value={newPIN}
@@ -724,7 +651,7 @@ function App() {
                 </div>
                 
                 <div className="password-input-group">
-                  <label>{language === 'english' ? 'Confirm PIN' : '確認PIN碼'}</label>
+                  <label>Confirm PIN</label>
                   <input 
                     type="password" 
                     value={confirmPIN}
@@ -738,7 +665,7 @@ function App() {
                   className="password-change-button"
                   onClick={changePIN}
                 >
-                  {language === 'english' ? 'Update PIN' : '更新PIN碼'}
+                  Update PIN
                 </button>
                 
                 {pinChangeMessage && (
@@ -753,27 +680,35 @@ function App() {
           {/* Voice Settings Tab */}
           {activeTab === 'voice' && (
             <div className="tab-content">
-              <div className="voice-profile-selector">
-                <div className="voice-language-section">
-                  <h4>{language === 'english' ? 'English Voice' : '英語語音'}</h4>
+              <div className="voice-settings">
+                <div className="voice-setting-group">
+                  <label>English Voice</label>
                   <select 
                     value={englishVoice}
                     onChange={(e) => setEnglishVoice(e.target.value)}
                   >
+                    {/* Dynamically generate options from available voices */}
+                    {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
+                      .filter(voice => voice.lang.includes('en'))
+                      .map(voice => (
+                        <option key={voice.name} value={voice.name}>
+                          {voice.name} ({voice.lang})
+                        </option>
+                      ))
+                    }
+                    {/* Fallback option if no voices are found */}
                     <option value="Google US English">Google US English</option>
-                    <option value="Google UK English Female">Google UK English Female</option>
-                    <option value="Google UK English Male">Google UK English Male</option>
                   </select>
                   <button 
                     className="test-voice-button"
-                    onClick={() => testVoice('english')}
+                    onClick={() => speakText('This is a test of the selected voice.')}
                   >
-                    {language === 'english' ? 'Test Voice' : '測試語音'}
+                    Test Voice
                   </button>
                 </div>
                 
-                <div className="voice-language-section">
-                  <h4>{language === 'english' ? 'Cantonese Voice' : '粵語語音'}</h4>
+                <div className="voice-setting-group">
+                  <label>Cantonese Voice</label>
                   <select 
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
@@ -796,9 +731,9 @@ function App() {
                   </select>
                   <button 
                     className="test-voice-button"
-                    onClick={() => testVoice('cantonese')}
+                    onClick={() => speakText('你好，這是粵語語音測試。')}
                   >
-                    {language === 'english' ? 'Test Voice' : '測試語音'}
+                    Test Voice
                   </button>
                 </div>
               </div>
@@ -808,20 +743,36 @@ function App() {
           {/* History Tab */}
           {activeTab === 'history' && (
             <div className="tab-content">
-              <div className="activity-log">
+              <div className="history-controls">
+                <h3>Question History</h3>
+                <button 
+                  className="clear-history-button"
+                  onClick={clearHistory}
+                >
+                  Clear History
+                </button>
+              </div>
+              
+              <div className="question-history">
                 {questionHistory.length > 0 ? (
-                  questionHistory.map((item, index) => (
-                    <div key={index} className="activity-item">
-                      <div className="timestamp">{item.timestamp}</div>
-                      <strong>{language === 'english' ? 'Question' : '問題'} ({item.language}):</strong>
-                      <p>{item.question}</p>
-                      <strong>{language === 'english' ? 'Answer' : '答案'}:</strong>
-                      <p>{item.answer}</p>
-                    </div>
-                  ))
+                  <ul>
+                    {questionHistory.map((item, index) => (
+                      <li key={index} className="history-item">
+                        <div className="history-question">
+                          <strong>Q:</strong> {item.question}
+                        </div>
+                        <div className="history-answer">
+                          <strong>A:</strong> {item.answer}
+                        </div>
+                        <div className="history-timestamp">
+                          {new Date(item.timestamp).toLocaleString()}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
-                  <p className="no-words">
-                    {language === 'english' ? 'No questions asked yet' : '尚未提出問題'}
+                  <p className="no-history">
+                    No questions asked yet
                   </p>
                 )}
               </div>
@@ -829,10 +780,10 @@ function App() {
           )}
           
           <button 
-            className="exit-button" 
-            onClick={toggleParentControls}
+            className="close-controls-button"
+            onClick={() => setShowParentControls(false)}
           >
-            {language === 'english' ? 'Close' : '關閉'}
+            Close
           </button>
         </div>
       )}
