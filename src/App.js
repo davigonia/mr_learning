@@ -470,8 +470,7 @@ function App() {
       </div>
       
       <div className="question-box">
-        <input 
-          type="text" 
+        <textarea
           className="question-input"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -481,16 +480,15 @@ function App() {
         
         <div className="action-buttons">
           <button 
-            className="primary-button ask-button"
+            className="ask-button"
             onClick={handleSubmit}
             disabled={isLoading || !question.trim()}
-            aria-label={language === 'english' ? 'Ask' : '問問題'}
           >
-            ➤
+            {uiText.askButton}
           </button>
           <button 
             type="button"
-            className={`primary-button record-button ${isListening ? 'active' : ''}`}
+            className={`record-button ${isListening ? 'active' : ''}`}
             onClick={toggleSpeechRecognition}
             disabled={isLoading}
             aria-label={language === 'english' ? 'Voice Input' : '語音輸入'}

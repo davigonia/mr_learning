@@ -107,24 +107,34 @@ h1 {
 
 /* Question box layout */
 .question-box {
+  border: 2px solid #4fc3f7;
+  border-radius: 25px;
+  padding: 30px;
+  margin: 20px auto;
+  width: 90%;
+  max-width: 700px;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   position: relative;
 }
 
 /* Question input styles */
 .question-input {
-  width: calc(100% - 130px); /* Leave space for buttons */
-  max-width: 600px; /* Maximum width on larger screens */
-  height: 60px;
-  font-size: 22px; /* Fixed font size */
-  padding: 15px 20px 15px 25px;
-  border-radius: 30px;
-  border: 2px solid #4fc3f7;
+  width: 80%;
+  height: 100px;
+  font-size: 26px;
+  padding: 15px;
+  border-radius: 15px;
+  border: 1px solid #ccc;
   outline: none;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease;
   font-family: 'Open Sans', sans-serif;
-  box-sizing: border-box; /* Include padding in width calculation */
+  box-sizing: border-box;
   display: inline-block;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.question-input:focus {
+  border-color: #0000FF;
 }
 
 .question-input:focus {
@@ -132,60 +142,60 @@ h1 {
   box-shadow: 0 4px 12px rgba(41, 182, 246, 0.3);
 }
 
-/* Action buttons container */
+/* Button container */
 .action-buttons {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  gap: 10px;
-}
-
-/* Primary button styles (shared between ask and record) */
-.primary-button {
-  width: 50px;
-  height: 50px;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  font-size: 20px;
   display: flex;
   justify-content: center;
-  align-items: center;
-}
-
-.primary-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
-}
-
-.primary-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-top: 15px;
+  gap: 20px;
 }
 
 /* Ask button styles */
 .ask-button {
+  width: 120px;
+  height: 50px;
   background-color: #81c784;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+  font-size: 22px;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .ask-button:hover {
   background-color: #66bb6a;
 }
 
+.ask-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 /* Record button styles */
 .record-button {
+  width: 60px;
+  height: 60px;
   background-color: #e57373;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+  font-size: 22px;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .record-button:hover {
   background-color: #ef5350;
+}
+
+.record-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 
 .record-button.active {
