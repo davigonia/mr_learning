@@ -44,7 +44,10 @@ function App() {
   useEffect(() => {
     console.log('App component mounted successfully');
     
-    // Initialize speech recognition if available
+    // Initialize speech synthesis
+    speechSynthesisRef.current = window.speechSynthesis;
+    
+    // Initialize speech recognition
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
@@ -80,6 +83,49 @@ function App() {
     } else {
       console.warn('Speech recognition not supported in this browser');
     }
+    
+    // Load voices when they are available
+    const loadVoices = () => {
+      // Log all available voices for debugging
+      const voices = speechSynthesisRef.current.getVoices();
+      console.log('All available voices:', voices.map(v => ({ 
+        name: v.name, 
+        lang: v.lang, 
+        default: v.default,
+        localService: v.localService
+      })));
+      
+      // Log Chinese/Cantonese voices
+      const chineseVoices = voices.filter(v => 
+        v.lang.includes('zh') || 
+        v.name.includes('Chinese') || 
+        v.name.includes('Cantonese')
+      );
+      console.log('Chinese/Cantonese voices:', chineseVoices.map(v => ({ 
+        name: v.name, 
+        lang: v.lang 
+      })));
+    };
+    
+    speechSynthesisRef.current.onvoiceschanged = loadVoices;
+    
+    // Initial load attempt
+    loadVoices();
+    
+    // Cleanup
+    return () => {
+      if (speechRecognition) {
+        speechRecognition.onstart = null;
+        speechRecognition.onend = null;
+        speechRecognition.onresult = null;
+        speechRecognition.onerror = null;
+      }
+      
+      if (speechSynthesisRef.current) {
+        speechSynthesisRef.current.cancel();
+        speechSynthesisRef.current.onvoiceschanged = null;
+      }
+    };
   }, [language]);
 
   // UI text based on language
@@ -153,14 +199,33 @@ function App() {
         utterance.lang = 'en-US';
       }
     } else {
-      // For Cantonese, try to find Ting-Ting or any Chinese voice
-      const selectedVoice = voices.find(voice => 
-        voice.name === 'Ting-Ting' || 
-        voice.name.includes('Chinese') || 
-        voice.name.includes('Cantonese') ||
-        voice.lang === 'zh-HK' ||
-        voice.lang === 'zh-TW'
-      );
+      // For Cantonese, try to find the exact selected voice first
+      let selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      console.log('Looking for exact match:', cantoneseVoice);
+      
+      // If exact match not found, try to find a voice by partial name match
+      if (!selectedVoice) {
+        console.log('Exact match not found, trying partial match');
+        selectedVoice = voices.find(voice => 
+          voice.name.includes(cantoneseVoice) ||
+          (cantoneseVoice.includes('Sin-ji') && voice.name.includes('Sin')) ||
+          (cantoneseVoice.includes('Mei-Jia') && voice.name.includes('Mei')) ||
+          (cantoneseVoice.includes('Wan-Lung') && voice.name.includes('Wan')) ||
+          (cantoneseVoice.includes('Hong Kong') && voice.name.includes('Hong Kong'))
+        );
+      }
+      
+      // If still not found, try to find any Cantonese or Chinese voice
+      if (!selectedVoice) {
+        console.log('Partial match not found, trying any Chinese/Cantonese voice');
+        selectedVoice = voices.find(voice => 
+          voice.name.includes('Chinese') || 
+          voice.name.includes('Cantonese') ||
+          voice.lang === 'zh-HK' ||
+          voice.lang === 'zh-TW' ||
+          voice.lang === 'zh-CN'
+        );
+      }
       
       if (selectedVoice) {
         console.log('Using Cantonese voice:', selectedVoice.name);
@@ -279,14 +344,33 @@ function App() {
         utterance.lang = 'en-US';
       }
     } else {
-      // For Cantonese, try to find Ting-Ting or any Chinese voice
-      const selectedVoice = voices.find(voice => 
-        voice.name === 'Ting-Ting' || 
-        voice.name.includes('Chinese') || 
-        voice.name.includes('Cantonese') ||
-        voice.lang === 'zh-HK' ||
-        voice.lang === 'zh-TW'
-      );
+      // For Cantonese, try to find the exact selected voice first
+      let selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      console.log('Testing - Looking for exact match:', cantoneseVoice);
+      
+      // If exact match not found, try to find a voice by partial name match
+      if (!selectedVoice) {
+        console.log('Testing - Exact match not found, trying partial match');
+        selectedVoice = voices.find(voice => 
+          voice.name.includes(cantoneseVoice) ||
+          (cantoneseVoice.includes('Sin-ji') && voice.name.includes('Sin')) ||
+          (cantoneseVoice.includes('Mei-Jia') && voice.name.includes('Mei')) ||
+          (cantoneseVoice.includes('Wan-Lung') && voice.name.includes('Wan')) ||
+          (cantoneseVoice.includes('Hong Kong') && voice.name.includes('Hong Kong'))
+        );
+      }
+      
+      // If still not found, try to find any Cantonese or Chinese voice
+      if (!selectedVoice) {
+        console.log('Testing - Partial match not found, trying any Chinese/Cantonese voice');
+        selectedVoice = voices.find(voice => 
+          voice.name.includes('Chinese') || 
+          voice.name.includes('Cantonese') ||
+          voice.lang === 'zh-HK' ||
+          voice.lang === 'zh-TW' ||
+          voice.lang === 'zh-CN'
+        );
+      }
       
       if (selectedVoice) {
         console.log('Testing with Cantonese voice:', selectedVoice.name);
@@ -694,7 +778,16 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    <option value="Ting-Ting">Ting-Ting (天天) - 女聲</option>
+                    <option value="Google 粵語（香港）">Google 粵語（香港）</option>
+                    <option value="Microsoft Xiaoxiao">Microsoft Xiaoxiao - 小曦 (女聲)</option>
+                    <option value="Microsoft Yunxi">Microsoft Yunxi - 雲溪 (女聲)</option>
+                    <option value="Microsoft Yunyang">Microsoft Yunyang - 雲陽 (男聲)</option>
+                    <option value="Microsoft Kangkang">Microsoft Kangkang - 康康 (男聲)</option>
+                    <option value="Microsoft HiuGaai">Microsoft HiuGaai - 曙街 (粵語女聲)</option>
+                    <option value="Microsoft HiuMaan">Microsoft HiuMaan - 曙文 (粵語女聲)</option>
+                    <option value="Microsoft WanLung">Microsoft WanLung - 雲龍 (粵語男聲)</option>
+                    <option value="Google Cantonese">Google Cantonese (Hong Kong)</option>
+                    <option value="Google Chinese">Google Chinese (Mandarin)</option>
                   </select>
                   <button 
                     className="test-voice-button"
