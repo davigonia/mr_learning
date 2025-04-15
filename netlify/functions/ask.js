@@ -56,7 +56,7 @@ exports.handler = async function(event, context) {
     
     // TEMPORARY DEBUG MODE - Return a test response without calling the API
     // This helps us test if the function is being called correctly
-    const debugMode = true;
+    const debugMode = false;
     if (debugMode) {
       console.log('Debug mode active - returning test response');
       return {
