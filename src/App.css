@@ -85,91 +85,93 @@ h1 {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   box-sizing: border-box; /* Include padding in width calculation */
   position: relative; /* For proper positioning of child elements */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-/* Textarea styles */
-textarea {
+/* Question input styles */
+.question-input {
   width: 100%; /* Full width on mobile */
-  max-width: 500px; /* Maximum width on larger screens */
-  height: 100px;
+  max-width: 600px; /* Maximum width on larger screens */
+  height: 60px;
   font-size: 22px; /* Fixed font size */
-  padding: 15px;
-  border-radius: 15px;
-  border: 1px solid #ccc;
+  padding: 15px 20px;
+  border-radius: 30px;
+  border: 2px solid #4fc3f7;
   outline: none;
-  transition: border-color 0.3s ease;
+  transition: all 0.3s ease;
   font-family: 'Open Sans', sans-serif;
-  resize: none;
   box-sizing: border-box; /* Include padding in width calculation */
-  margin: 0 auto; /* Center the textarea */
+  margin: 0 auto; /* Center the input */
   display: block; /* Block display for proper centering */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-textarea:focus {
-  border-color: #0000FF;
+.question-input:focus {
+  border-color: #29b6f6;
+  box-shadow: 0 4px 12px rgba(41, 182, 246, 0.3);
 }
 
-/* Button container */
-.button-container {
+/* Action buttons container */
+.action-buttons {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 15px auto 0 auto;
+  margin: 25px auto 0 auto;
   gap: 20px;
   flex-wrap: wrap; /* Allow wrapping on very small screens */
   width: 100%;
-  max-width: 500px; /* Match textarea max-width */
+  max-width: 500px;
 }
 
-/* Ask button styles */
-.ask-button {
-  width: 120px;
+/* Primary button styles (shared between ask and record) */
+.primary-button {
   height: 50px;
-  background-color: #81c784;
+  padding: 0 25px;
   color: white;
   border: none;
   border-radius: 25px;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease;
-  font-size: 22px;
+  transition: all 0.3s ease;
+  font-size: 18px;
+  font-weight: bold;
   font-family: 'Open Sans', sans-serif;
+  min-width: 120px;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+}
+
+.primary-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Ask button styles */
+.ask-button {
+  background-color: #81c784;
 }
 
 .ask-button:hover {
   background-color: #66bb6a;
 }
 
-.ask-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-/* Microphone button styles */
-.mic-button {
-  width: 60px;
-  height: 60px;
+/* Record button styles */
+.record-button {
   background-color: #e57373;
-  color: white;
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease;
-  font-size: 22px;
-  font-family: 'Open Sans', sans-serif;
 }
 
-.mic-button:hover {
+.record-button:hover {
   background-color: #ef5350;
 }
 
-.mic-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.mic-button.active {
+.record-button.active {
   animation: glow 1s infinite alternate;
 }
 
@@ -212,7 +214,7 @@ textarea:focus {
 .language-toggles {
   display: flex;
   justify-content: center;
-  margin: 15px auto 5px auto;
+  margin: 20px auto 5px auto;
   flex-wrap: wrap; /* Allow wrapping on very small screens */
   max-width: 100%;
   gap: 10px; /* Add gap between buttons when they wrap */
@@ -253,7 +255,7 @@ textarea:focus {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 20px auto;
+  margin: 0 auto 30px auto;
   max-width: 800px;
   padding: 0 20px;
 }
@@ -264,12 +266,13 @@ textarea:focus {
   color: white;
   border: none;
   border-radius: 25px;
-  padding: 10px 20px;
+  padding: 12px 25px;
   font-size: 18px;
   font-family: 'Open Sans', sans-serif;
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  width: 200px;
 }
 
 .parent-access-button:hover {

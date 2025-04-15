@@ -430,39 +430,45 @@ function App() {
     <div className="app-container">
       <header>
         <h1>Mr. Learning</h1>
+      </header>
+      
+      <div className="parent-access-container">
         <button 
           className="parent-access-button"
           onClick={showPINPrompt}
         >
           Parent Access
         </button>
-      </header>
+      </div>
       
       <div className="question-box">
-        <form onSubmit={handleSubmit}>
-          <input 
-            type="text" 
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder={uiText.placeholder}
-            disabled={isLoading}
-          />
+        <input 
+          type="text" 
+          className="question-input"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder={uiText.placeholder}
+          disabled={isLoading}
+        />
+        
+        <div className="action-buttons">
           <button 
-            type="submit" 
+            className="primary-button ask-button"
+            onClick={handleSubmit}
             disabled={isLoading || !question.trim()}
           >
             {uiText.askButton}
           </button>
           <button 
             type="button"
-            className={`voice-input-button ${isListening ? 'active' : ''}`}
+            className={`primary-button record-button ${isListening ? 'active' : ''}`}
             onClick={toggleSpeechRecognition}
             disabled={isLoading}
             aria-label={language === 'english' ? 'Voice Input' : '語音輸入'}
           >
             🎤
           </button>
-        </form>
+        </div>
         
         <div className="language-toggles">
           <button 
