@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 function App() {
@@ -10,6 +10,9 @@ function App() {
   const [error, setError] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speechRecognition, setSpeechRecognition] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speechSynthesisRef = useRef(window.speechSynthesis);
 
   // Effect to initialize speech recognition
   useEffect(() => {
@@ -94,6 +97,42 @@ function App() {
     }
   };
 
+  // Function to speak text using speech synthesis
+  const speakText = (text) => {
+    if (isMuted) return;
+    
+    // Cancel any ongoing speech
+    speechSynthesisRef.current.cancel();
+    
+    // Create a new speech synthesis utterance
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Set the language based on the current app language
+    utterance.lang = language === 'english' ? 'en-US' : 'zh-HK';
+    utterance.rate = 0.9; // Slightly slower for children
+    
+    // Set event handlers
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      setIsSpeaking(false);
+    };
+    
+    // Speak the text
+    speechSynthesisRef.current.speak(utterance);
+  };
+  
+  // Function to toggle mute state
+  const toggleMute = () => {
+    // If currently speaking and toggling to muted, stop speech
+    if (isSpeaking && !isMuted) {
+      speechSynthesisRef.current.cancel();
+      setIsSpeaking(false);
+    }
+    setIsMuted(!isMuted);
+  };
+
   // Function to handle question submission
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -122,7 +161,13 @@ function App() {
       
       const data = await response.json();
       console.log('Response received:', data);
-      setAnswer(data.answer || 'No answer received');
+      const answerText = data.answer || 'No answer received';
+      setAnswer(answerText);
+      
+      // Speak the answer if not muted
+      if (!isMuted) {
+        speakText(answerText);
+      }
     } catch (error) {
       console.error('Error calling function:', error);
       setError(language === 'english' ? `Error: ${error.message}` : `錯誤: ${error.message}`);
@@ -183,6 +228,13 @@ function App() {
       </div>
         
       <div className="answer-box">
+        <button 
+          className={`mute-button ${isMuted ? 'active' : ''}`}
+          onClick={toggleMute}
+          aria-label={language === 'english' ? 'Toggle voice output' : '切換語音輸出'}
+        >
+          {isMuted ? '🔇' : '🔊'}
+        </button>
         {isLoading ? (
           <div className="loading">{uiText.loading}</div>
         ) : (
