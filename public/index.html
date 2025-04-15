@@ -7,28 +7,87 @@
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Mr Learning - Educational AI for Children"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>React App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <title>Mr Learning</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Open Sans', sans-serif;
+        background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #fallback {
+        display: none; /* Will be shown via JS if React fails to load */
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        padding: 30px;
+        max-width: 600px;
+        width: 90%;
+        text-align: center;
+        margin: 20px;
+      }
+      #fallback h1 {
+        color: #2196F3;
+        margin-bottom: 20px;
+      }
+      #fallback p {
+        font-size: 18px;
+        line-height: 1.6;
+        margin-bottom: 15px;
+      }
+      #fallback button {
+        background-color: #2196F3;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 20px;
+        transition: background-color 0.3s;
+      }
+      #fallback button:hover {
+        background-color: #0b7dda;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    
+    <!-- Fallback content that will display if React fails to load -->
+    <div id="fallback">
+      <h1>Mr Learning</h1>
+      <p>Welcome to Mr Learning, your child's educational AI companion!</p>
+      <p>We're experiencing some technical difficulties right now.</p>
+      <p>Please try refreshing the page or check back later.</p>
+      <button onclick="window.location.reload()">Refresh Page</button>
+    </div>
+
+    <script>
+      // Check if React app loads properly
+      window.addEventListener('load', function() {
+        // Give React a moment to render
+        setTimeout(function() {
+          var rootContent = document.getElementById('root').innerHTML;
+          // If root is empty after 3 seconds, show fallback content
+          if (!rootContent || rootContent.trim() === '') {
+            document.getElementById('fallback').style.display = 'block';
+            console.log('React app failed to load. Showing fallback content.');
+          }
+        }, 3000);
+      });
+    </script>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

@@ -83,12 +83,12 @@ exports.handler = async function(event, context) {
 - ALWAYS redirect inappropriate questions to educational topics
 - ALWAYS maintain a positive, encouraging tone`
         : `內容過濾（嚴格）：
-- 絕對唔可以討論與暴力、武器或危險活動相關嘅主題
-- 絕對唔可以提及拖拍、浪漫或成人關係等成熟主題
-- 絕對唔可以使用俗語或非正式語言
-- 絕對唔可以討論可怕或潛在令人恐懼嘅主題
-- 一定要將不適當嘅問題重新導向到教育主題
-- 一定要保持積極、鼓勵嘅語調`;
+- 絕不討論與暴力、武器或危險活動相關的主題
+- 絕不提及約會、浪漫或成人關係等成熟主題
+- 絕不使用俚語或非正式語言
+- 絕不討論可怕或潛在令人恐懼的主題
+- 始終將不適當的問題重定向到教育主題
+- 始終保持積極、鼓勵的語調`;
     } else if (contentFiltering === 'moderate') {
       contentFilteringRules = language === 'english'
         ? `CONTENT FILTERING (MODERATE):
@@ -98,17 +98,17 @@ exports.handler = async function(event, context) {
 - Maintain a positive, encouraging tone`
         : `內容過濾（中等）：
 - 避免討論暴力或危險活動
-- 避免成熟主題，除非以適合年齡嘅方式呈現
-- 將不適當嘅問題重新導向到教育主題
-- 保持積極、鼓勵嘅語調`;
+- 避免成熟主題，除非以適合年齡的方式呈現
+- 將不適當的問題重定向到教育主題
+- 保持積極、鼓勵的語調`;
     } else {
       contentFilteringRules = language === 'english'
         ? `CONTENT FILTERING (MINIMAL):
 - Ensure all content is age-appropriate for children 5-8 years old
 - Redirect clearly inappropriate questions to educational topics`
         : `內容過濾（最小）：
-- 確保所有內容都適合5-8歲兒童嘅年齡
-- 將明顯不適當嘅問題重新導向到教育主題`;
+- 確保所有內容都適合5-8歲兒童的年齡
+- 將明顯不適當的問題重定向到教育主題`;
     }
     
     // System prompt based on language and content filtering
@@ -129,24 +129,22 @@ exports.handler = async function(event, context) {
 ${contentFilteringRules}
 
 Your goal is to develop young minds with factually correct, logically sound information.`
-      : `你為年幕小嘅兒童（5-8歲）提供教育性嘅回答。請遵循以下規則：
+      : `你為年幕小的兒童（5-8歲）提供教育性的回答。請遵循以下規則：
 
 1. 絕不犧牲準確性或邏輯清晰度 - 事實必須100%正確
-2. 使用簡單語言，但喺解釋中保持正確嘅邏輯結構
-3. 將複雜概念分解為清晰、有序嘅步驟
+2. 使用簡單語言，但在解釋中保持正確的邏輯結構
+3. 將複雜概念分解為清晰、有序的步驟
 4. 保持回答簡潔 - 最多2-3個短句
-5. 避免專業行話，但要使用正確嘅術語並簡要解釋
+5. 避免專業行話，但要使用正確的術語並簡要解釋
 6. 科學問題：準確解釋因果關係
-7. 數學問題：確保數學概念喺邏輯上係完善嘅
-8. 歷史問題：保持年代順序清晰同事實準確性
-9. 只喺唔歪曲基本邏輯嘅情況下使用簡單比喻
-10. 省略問候同結論 - 專注於清晰、準確嘅內容
+7. 數學問題：確保數學概念在邏輯上是完善的
+8. 歷史問題：保持年代順序清晰和事實準確性
+9. 只在不歧曲基本邏輯的情況下使用簡單比喻
+10. 省略問候和結論 - 專注於清晰、準確的內容
 
 ${contentFilteringRules}
 
-你嘅目標係使用事實正確、邏輯完善嘅信息培養年輕嘅頭腦。
-
-重要：請使用香港粵語（而唔係普通話或書面中文）回答所有問題。`;
+你的目標是使用事實正確、邏輯完善的信息培養年輕的頭腦。`;
     
     // Check if API key exists
     if (!process.env.GROK_API_KEY) {

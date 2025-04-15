@@ -30,7 +30,7 @@ function App() {
   
   // Voice profile state
   const [englishVoice, setEnglishVoice] = useState('Google US English');
-  const [cantoneseVoice, setCantoneseVoice] = useState('Google 粵語（香港）');
+  const [cantoneseVoice, setCantoneseVoice] = useState('Google Cantonese (Hong Kong)');
   
   // Question history state
   const [questionHistory, setQuestionHistory] = useState([]);
@@ -130,7 +130,7 @@ function App() {
   // UI text based on language
   const uiText = {
     askButton: language === 'english' ? 'Ask' : '問',
-    placeholder: language === 'english' ? 'Ask me anything...' : '你想知啲乜？',
+    placeholder: language === 'english' ? 'Ask me anything...' : '問我任何問題...',
     answerPlaceholder: language === 'english' ? 'Your answer will appear here...' : '你的答案會在這裡顯示...',
     loading: language === 'english' ? 'Thinking...' : '思考中...'
   };
@@ -190,24 +190,10 @@ function App() {
         utterance.lang = 'en-US';
       }
     } else {
-      // First try to find the exact Google 粵語（香港）voice
-      let selectedVoice = voices.find(voice => voice.name === 'Google 粵語（香港）');
-      
-      // If not found, try with the current cantoneseVoice value
-      if (!selectedVoice && cantoneseVoice !== 'Google 粵語（香港）') {
-        selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      }
-      
-      // If still not found, try any voice with zh-HK language code
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
-      }
-      
+      const selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
       if (selectedVoice) {
-        console.log('Using Cantonese voice:', selectedVoice.name);
         utterance.voice = selectedVoice;
       } else {
-        console.log('Fallback to zh-HK language code');
         utterance.lang = 'zh-HK';
       }
     }
@@ -302,35 +288,15 @@ function App() {
     
     // Find the selected voice
     const voices = speechSynthesisRef.current.getVoices();
+    const selectedVoice = voiceType === 'english' ? 
+      voices.find(voice => voice.name === englishVoice) : 
+      voices.find(voice => voice.name === cantoneseVoice);
     
-    if (voiceType === 'english') {
-      const selectedVoice = voices.find(voice => voice.name === englishVoice);
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      } else {
-        utterance.lang = 'en-US';
-      }
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
     } else {
-      // First try to find the exact Google 粵語（香港）voice
-      let selectedVoice = voices.find(voice => voice.name === 'Google 粵語（香港）');
-      
-      // If not found, try with the current cantoneseVoice value
-      if (!selectedVoice && cantoneseVoice !== 'Google 粵語（香港）') {
-        selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      }
-      
-      // If still not found, try any voice with zh-HK language code
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
-      }
-      
-      if (selectedVoice) {
-        console.log('Testing with Cantonese voice:', selectedVoice.name);
-        utterance.voice = selectedVoice;
-      } else {
-        console.log('Testing with fallback to zh-HK language code');
-        utterance.lang = 'zh-HK';
-      }
+      // Fallback to language setting if voice not found
+      utterance.lang = voiceType === 'english' ? 'en-US' : 'zh-HK';
     }
     
     speechSynthesisRef.current.speak(utterance);
@@ -730,8 +696,21 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    {/* Only show Google 粵語（香港）voice */}
-                    <option value="Google 粵語（香港）">Google 粵語（香港）</option>
+                    {/* Dynamically generate options from available voices */}
+                    {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
+                      .filter(voice => 
+                        voice.lang === 'zh-HK' || 
+                        voice.name.includes('Cantonese') || 
+                        voice.name.includes('粵語')
+                      )
+                      .map(voice => (
+                        <option key={voice.name} value={voice.name}>
+                          {voice.name} ({voice.lang})
+                        </option>
+                      ))
+                    }
+                    {/* Fallback options if no voices are found */}
+                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong)</option>
                   </select>
                   <button 
                     className="test-voice-button"
