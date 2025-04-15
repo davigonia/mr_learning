@@ -175,41 +175,123 @@ function App() {
     // Cancel any ongoing speech
     speechSynthesisRef.current.cancel();
     
-    // Create a new speech synthesis utterance
-    const utterance = new SpeechSynthesisUtterance(text);
-    
     // Get available voices
     const voices = speechSynthesisRef.current.getVoices();
     
-    // Set the voice based on the current language
+    // Find the selected voice based on current language
+    let selectedVoice;
+    let langCode;
+    
     if (language === 'english') {
-      const selectedVoice = voices.find(voice => voice.name === englishVoice);
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      } else {
-        utterance.lang = 'en-US';
+      selectedVoice = voices.find(voice => voice.name === englishVoice);
+      langCode = 'en-US';
+    } else {
+      selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      langCode = 'zh-HK';
+    }
+    
+    // Set speaking to true at the beginning
+    setIsSpeaking(true);
+    
+    // Break text into sentences for better speech synthesis
+    // For Cantonese, split by period, question mark, exclamation mark
+    // For English, use shorter segments to prevent cutting off
+    let textChunks = [];
+    
+    if (language === 'english') {
+      // For English, split into manageable chunks (around 200 chars)
+      const maxChunkLength = 200;
+      let remainingText = text;
+      
+      while (remainingText.length > 0) {
+        let chunkEnd = Math.min(remainingText.length, maxChunkLength);
+        
+        // Try to find a good breaking point (period, question mark, etc.)
+        if (chunkEnd < remainingText.length) {
+          const lastPeriod = Math.max(
+            remainingText.lastIndexOf('.', chunkEnd),
+            remainingText.lastIndexOf('?', chunkEnd),
+            remainingText.lastIndexOf('!', chunkEnd)
+          );
+          
+          if (lastPeriod > 0) {
+            chunkEnd = lastPeriod + 1;
+          } else {
+            // If no good breaking point, try to break at a space
+            const lastSpace = remainingText.lastIndexOf(' ', chunkEnd);
+            if (lastSpace > chunkEnd / 2) {
+              chunkEnd = lastSpace + 1;
+            }
+          }
+        }
+        
+        textChunks.push(remainingText.substring(0, chunkEnd));
+        remainingText = remainingText.substring(chunkEnd).trim();
       }
     } else {
-      const selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      } else {
-        utterance.lang = 'zh-HK';
+      // For Cantonese, split by sentence endings (。？！)
+      textChunks = text
+        .split(/([。！？])/)
+        .reduce((chunks, part, i, arr) => {
+          if (i % 2 === 0) {
+            // This is text before punctuation
+            return [...chunks, part + (arr[i + 1] || '')];
+          } else {
+            // This is punctuation, already added to previous chunk
+            return chunks;
+          }
+        }, [])
+        .filter(chunk => chunk.trim().length > 0);
+      
+      // If no sentence breaks were found, use the whole text
+      if (textChunks.length === 0) {
+        textChunks = [text];
       }
     }
     
-    utterance.rate = 0.9; // Slightly slower for children
-    
-    // Set event handlers
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
-      setIsSpeaking(false);
+    // Function to speak each chunk sequentially
+    const speakChunks = (index) => {
+      if (index >= textChunks.length) {
+        // All chunks have been spoken
+        setIsSpeaking(false);
+        return;
+      }
+      
+      const chunk = textChunks[index];
+      if (!chunk || chunk.trim() === '') {
+        // Skip empty chunks
+        speakChunks(index + 1);
+        return;
+      }
+      
+      const utterance = new SpeechSynthesisUtterance(chunk);
+      
+      // Set voice or fallback to language code
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      } else {
+        utterance.lang = langCode;
+      }
+      
+      utterance.rate = 0.9; // Slightly slower for children
+      
+      // When this chunk ends, speak the next one
+      utterance.onend = () => {
+        speakChunks(index + 1);
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        // Try to continue with next chunk despite error
+        speakChunks(index + 1);
+      };
+      
+      // Speak the current chunk
+      speechSynthesisRef.current.speak(utterance);
     };
     
-    // Speak the text
-    speechSynthesisRef.current.speak(utterance);
+    // Start speaking from the first chunk
+    speakChunks(0);
   };
   
   // Function to toggle mute state
