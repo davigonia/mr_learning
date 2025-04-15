@@ -696,20 +696,22 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    {/* Only show Google zh-HK option */}
+                    {/* Dynamically generate options from available voices */}
                     {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
                       .filter(voice => 
-                        voice.lang === 'zh-HK' && 
-                        voice.name.includes('Google')
+                        voice.lang === 'zh-HK' || 
+                        voice.name.includes('Cantonese') || 
+                        voice.name.includes('粵語')
                       )
                       .map(voice => (
                         <option key={voice.name} value={voice.name}>
-                          {voice.name}
+                          {voice.name} ({voice.lang})
                         </option>
                       ))
                     }
-                    {/* Fallback option if no voices are found */}
-                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong)</option>
+                    {/* Fallback options if no voices are found */}
+                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong) - Male</option>
+                    <option value="Google Cantonese Female (Hong Kong)">Google Cantonese (Hong Kong) - Female</option>
                   </select>
                   <button 
                     className="test-voice-button"
