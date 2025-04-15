@@ -193,7 +193,7 @@ function App() {
         }, 2000); // 2 second delay
       }
     }
-  }, [isListening, question]);
+  }, [isListening, question, askGrok]);
 
   // Save activity log, banned words, and parent PIN to local storage when they change
   useEffect(() => {
