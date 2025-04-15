@@ -31,9 +31,28 @@ exports.handler = async function(event, context) {
 
   try {
     // Parse the request body
-    const { question, language, contentFiltering, timeLimit } = JSON.parse(event.body);
+    const { question, language, contentFiltering, timeLimit, bannedWords = [] } = JSON.parse(event.body);
     console.log(`Received question in ${language}: ${question}`);
     console.log(`Content filtering level: ${contentFiltering}, Time limit: ${timeLimit} minutes`);
+    console.log(`Banned words: ${bannedWords.join(', ')}`);
+    
+    // Check for banned words in the question
+    const containsBannedWord = bannedWords.some(word => 
+      question.toLowerCase().includes(word.toLowerCase())
+    );
+    
+    if (containsBannedWord) {
+      console.log('Question contains banned word, returning warning');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          answer: language === 'english' 
+            ? 'I cannot answer this question because it contains words that have been banned by your parents.' 
+            : '我無法回答這個問題，因為它包含了被您父母禁止的詞語。' 
+        })
+      };
+    }
     
     // TEMPORARY DEBUG MODE - Return a test response without calling the API
     // This helps us test if the function is being called correctly

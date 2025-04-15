@@ -22,6 +22,23 @@ function App() {
   const [contentFiltering, setContentFiltering] = useState('moderate'); // 'none', 'moderate', 'strict'
   const [timeLimit, setTimeLimit] = useState(30); // Time limit in minutes
   const [showPINModal, setShowPINModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('banned-words'); // 'banned-words', 'pin', 'voice', 'history'
+  
+  // Banned words state
+  const [bannedWords, setBannedWords] = useState([]);
+  const [newBannedWord, setNewBannedWord] = useState('');
+  
+  // Voice profile state
+  const [englishVoice, setEnglishVoice] = useState('Google US English');
+  const [cantoneseVoice, setCantoneseVoice] = useState('Google 粵語（香港）');
+  
+  // Question history state
+  const [questionHistory, setQuestionHistory] = useState([]);
+  
+  // PIN change state
+  const [newPIN, setNewPIN] = useState('');
+  const [confirmPIN, setConfirmPIN] = useState('');
+  const [pinChangeMessage, setPinChangeMessage] = useState('');
 
   // Effect to initialize speech recognition
   useEffect(() => {
@@ -116,8 +133,26 @@ function App() {
     // Create a new speech synthesis utterance
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Set the language based on the current app language
-    utterance.lang = language === 'english' ? 'en-US' : 'zh-HK';
+    // Get available voices
+    const voices = speechSynthesisRef.current.getVoices();
+    
+    // Set the voice based on the current language
+    if (language === 'english') {
+      const selectedVoice = voices.find(voice => voice.name === englishVoice);
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      } else {
+        utterance.lang = 'en-US';
+      }
+    } else {
+      const selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      } else {
+        utterance.lang = 'zh-HK';
+      }
+    }
+    
     utterance.rate = 0.9; // Slightly slower for children
     
     // Set event handlers
@@ -160,8 +195,65 @@ function App() {
   };
   
   // Function to change PIN
-  const changePIN = (newPIN) => {
+  const changePIN = () => {
+    if (newPIN.length < 4 || newPIN !== confirmPIN) {
+      setPinChangeMessage(language === 'english' ? 
+        'PIN must be at least 4 digits and match confirmation' : 
+        'PIN碼必須至少4位數字且與確認碼相符');
+      return;
+    }
+    
     setParentalPIN(newPIN);
+    setPinChangeMessage(language === 'english' ? 
+      'PIN changed successfully!' : 
+      'PIN碼已成功更改！');
+    setNewPIN('');
+    setConfirmPIN('');
+    
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setPinChangeMessage('');
+    }, 3000);
+  };
+  
+  // Function to add banned word
+  const addBannedWord = () => {
+    if (!newBannedWord.trim()) return;
+    
+    if (!bannedWords.includes(newBannedWord.trim().toLowerCase())) {
+      setBannedWords([...bannedWords, newBannedWord.trim().toLowerCase()]);
+    }
+    
+    setNewBannedWord('');
+  };
+  
+  // Function to remove banned word
+  const removeBannedWord = (word) => {
+    setBannedWords(bannedWords.filter(w => w !== word));
+  };
+  
+  // Function to test voice
+  const testVoice = (voiceType) => {
+    const testText = language === 'english' ? 
+      'This is a test of the selected voice.' : 
+      '這是所選聲音的測試。';
+    
+    const utterance = new SpeechSynthesisUtterance(testText);
+    
+    // Find the selected voice
+    const voices = speechSynthesisRef.current.getVoices();
+    const selectedVoice = voiceType === 'english' ? 
+      voices.find(voice => voice.name === englishVoice) : 
+      voices.find(voice => voice.name === cantoneseVoice);
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    } else {
+      // Fallback to language setting if voice not found
+      utterance.lang = voiceType === 'english' ? 'en-US' : 'zh-HK';
+    }
+    
+    speechSynthesisRef.current.speak(utterance);
   };
   
   // Function to toggle parental controls
@@ -169,6 +261,7 @@ function App() {
     if (showParentControls) {
       setShowParentControls(false);
       setIsPINCorrect(false);
+      setActiveTab('banned-words');
     } else {
       setShowPINModal(true);
       setEnteredPIN('');
@@ -179,6 +272,11 @@ function App() {
   const closePINModal = () => {
     setShowPINModal(false);
     setEnteredPIN('');
+  };
+  
+  // Function to change active tab
+  const changeTab = (tab) => {
+    setActiveTab(tab);
   };
 
   // Function to handle question submission
@@ -205,7 +303,8 @@ function App() {
           question,
           language,
           contentFiltering,
-          timeLimit
+          timeLimit,
+          bannedWords
         }),
       });
       
@@ -213,6 +312,16 @@ function App() {
       console.log('Response received:', data);
       const answerText = data.answer || 'No answer received';
       setAnswer(answerText);
+      
+      // Record question and answer in history
+      const timestamp = new Date().toLocaleTimeString();
+      const historyItem = {
+        question,
+        answer: answerText,
+        timestamp,
+        language
+      };
+      setQuestionHistory([historyItem, ...questionHistory]);
       
       // Speak the answer if not muted
       if (!isMuted) {
@@ -330,72 +439,268 @@ function App() {
         </div>
       )}
       
+      {/* PIN Modal */}
+      {showPINModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>{language === 'english' ? 'Parent Access' : '家長存取'}</h2>
+            <p>{language === 'english' ? 'Enter PIN to access parental controls' : '輸入PIN碼以存取家長控制'}</p>
+            
+            <input 
+              type="password" 
+              value={enteredPIN} 
+              onChange={handlePINEntry}
+              placeholder="PIN"
+              maxLength="4"
+            />
+            
+            <div className="modal-buttons">
+              <button onClick={verifyPIN}>
+                {language === 'english' ? 'Submit' : '提交'}
+              </button>
+              <button onClick={closePINModal}>
+                {language === 'english' ? 'Cancel' : '取消'}
+              </button>
+            </div>
+            
+            {error && <div className="error-message">{error}</div>}
+          </div>
+        </div>
+      )}
+      
       {/* Parental Control Panel */}
       {showParentControls && (
         <div className="parent-control-panel">
           <h2>{language === 'english' ? 'Parental Controls' : '家長控制'}</h2>
           
-          <div className="control-section">
-            <h3>{language === 'english' ? 'Content Filtering' : '內容過濾'}</h3>
-            <div className="radio-group">
-              <label>
-                <input 
-                  type="radio" 
-                  name="filtering" 
-                  value="none" 
-                  checked={contentFiltering === 'none'} 
-                  onChange={() => setContentFiltering('none')} 
-                />
-                {language === 'english' ? 'None' : '無'}
-              </label>
-              <label>
-                <input 
-                  type="radio" 
-                  name="filtering" 
-                  value="moderate" 
-                  checked={contentFiltering === 'moderate'} 
-                  onChange={() => setContentFiltering('moderate')} 
-                />
-                {language === 'english' ? 'Moderate' : '中等'}
-              </label>
-              <label>
-                <input 
-                  type="radio" 
-                  name="filtering" 
-                  value="strict" 
-                  checked={contentFiltering === 'strict'} 
-                  onChange={() => setContentFiltering('strict')} 
-                />
-                {language === 'english' ? 'Strict' : '嚴格'}
-              </label>
+          <div className="tab-navigation">
+            <button 
+              className={`tab-button ${activeTab === 'banned-words' ? 'active' : ''}`}
+              onClick={() => changeTab('banned-words')}
+            >
+              {language === 'english' ? 'Banned Words' : '禁用詞彙'}
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'pin' ? 'active' : ''}`}
+              onClick={() => changeTab('pin')}
+            >
+              {language === 'english' ? 'Change PIN' : '更改PIN'}
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'voice' ? 'active' : ''}`}
+              onClick={() => changeTab('voice')}
+            >
+              {language === 'english' ? 'Voice Settings' : '語音設置'}
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => changeTab('history')}
+            >
+              {language === 'english' ? 'History' : '歷史記錄'}
+            </button>
+          </div>
+          
+          {/* Banned Words Tab */}
+          {activeTab === 'banned-words' && (
+            <div className="tab-content">
+              <div className="control-section">
+                <h3>{language === 'english' ? 'Content Filtering' : '內容過濾'}</h3>
+                <div className="radio-group">
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="filtering" 
+                      value="none" 
+                      checked={contentFiltering === 'none'} 
+                      onChange={() => setContentFiltering('none')} 
+                    />
+                    {language === 'english' ? 'None' : '無'}
+                  </label>
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="filtering" 
+                      value="moderate" 
+                      checked={contentFiltering === 'moderate'} 
+                      onChange={() => setContentFiltering('moderate')} 
+                    />
+                    {language === 'english' ? 'Moderate' : '中等'}
+                  </label>
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="filtering" 
+                      value="strict" 
+                      checked={contentFiltering === 'strict'} 
+                      onChange={() => setContentFiltering('strict')} 
+                    />
+                    {language === 'english' ? 'Strict' : '嚴格'}
+                  </label>
+                </div>
+              </div>
+              
+              <div className="control-section">
+                <h3>{language === 'english' ? 'Time Limit (minutes)' : '時限 (分鐘)'}</h3>
+                <div className="slider-container">
+                  <input 
+                    type="range" 
+                    min="5" 
+                    max="60" 
+                    step="5" 
+                    value={timeLimit} 
+                    onChange={(e) => setTimeLimit(parseInt(e.target.value))} 
+                  />
+                  <span>{timeLimit}</span>
+                </div>
+              </div>
+              
+              <div className="control-section">
+                <h3>{language === 'english' ? 'Add Banned Words' : '添加禁用詞'}</h3>
+                <div className="banned-words-input">
+                  <input 
+                    type="text" 
+                    value={newBannedWord}
+                    onChange={(e) => setNewBannedWord(e.target.value)}
+                    placeholder={language === 'english' ? 'Enter word to ban' : '輸入要禁用的詞'}
+                  />
+                  <button onClick={addBannedWord}>
+                    {language === 'english' ? 'Add' : '添加'}
+                  </button>
+                </div>
+                
+                <div className="banned-words-list">
+                  {bannedWords.length > 0 ? (
+                    <ul>
+                      {bannedWords.map((word, index) => (
+                        <li key={index}>
+                          {word}
+                          <button 
+                            className="remove-word" 
+                            onClick={() => removeBannedWord(word)}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="no-words">
+                      {language === 'english' ? 'No banned words added yet' : '尚未添加禁用詞'}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="control-section">
-            <h3>{language === 'english' ? 'Time Limit (minutes)' : '時限 (分鐘)'}</h3>
-            <input 
-              type="range" 
-              min="5" 
-              max="60" 
-              step="5" 
-              value={timeLimit} 
-              onChange={(e) => setTimeLimit(parseInt(e.target.value))} 
-            />
-            <span>{timeLimit}</span>
-          </div>
+          {/* PIN Change Tab */}
+          {activeTab === 'pin' && (
+            <div className="tab-content">
+              <div className="password-change-container">
+                <div className="password-input-group">
+                  <label>{language === 'english' ? 'New PIN' : '新PIN碼'}</label>
+                  <input 
+                    type="password" 
+                    value={newPIN}
+                    onChange={(e) => setNewPIN(e.target.value)}
+                    placeholder="1234"
+                    maxLength="4"
+                  />
+                </div>
+                
+                <div className="password-input-group">
+                  <label>{language === 'english' ? 'Confirm PIN' : '確認PIN碼'}</label>
+                  <input 
+                    type="password" 
+                    value={confirmPIN}
+                    onChange={(e) => setConfirmPIN(e.target.value)}
+                    placeholder="1234"
+                    maxLength="4"
+                  />
+                </div>
+                
+                <button 
+                  className="password-change-button"
+                  onClick={changePIN}
+                >
+                  {language === 'english' ? 'Update PIN' : '更新PIN碼'}
+                </button>
+                
+                {pinChangeMessage && (
+                  <div className={pinChangeMessage.includes('success') ? 'password-success' : 'password-error'}>
+                    {pinChangeMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           
-          <div className="control-section">
-            <h3>{language === 'english' ? 'Change PIN' : '更改PIN碼'}</h3>
-            <input 
-              type="password" 
-              placeholder={language === 'english' ? 'New PIN' : '新PIN碼'} 
-              maxLength="4" 
-              onChange={(e) => changePIN(e.target.value)} 
-            />
-          </div>
+          {/* Voice Settings Tab */}
+          {activeTab === 'voice' && (
+            <div className="tab-content">
+              <div className="voice-profile-selector">
+                <div className="voice-language-section">
+                  <h4>{language === 'english' ? 'English Voice' : '英語語音'}</h4>
+                  <select 
+                    value={englishVoice}
+                    onChange={(e) => setEnglishVoice(e.target.value)}
+                  >
+                    <option value="Google US English">Google US English</option>
+                    <option value="Google UK English Female">Google UK English Female</option>
+                    <option value="Google UK English Male">Google UK English Male</option>
+                  </select>
+                  <button 
+                    className="test-voice-button"
+                    onClick={() => testVoice('english')}
+                  >
+                    {language === 'english' ? 'Test Voice' : '測試語音'}
+                  </button>
+                </div>
+                
+                <div className="voice-language-section">
+                  <h4>{language === 'english' ? 'Cantonese Voice' : '粵語語音'}</h4>
+                  <select 
+                    value={cantoneseVoice}
+                    onChange={(e) => setCantoneseVoice(e.target.value)}
+                  >
+                    <option value="Google 粵語（香港）">Google 粵語（香港）</option>
+                  </select>
+                  <button 
+                    className="test-voice-button"
+                    onClick={() => testVoice('cantonese')}
+                  >
+                    {language === 'english' ? 'Test Voice' : '測試語音'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* History Tab */}
+          {activeTab === 'history' && (
+            <div className="tab-content">
+              <div className="activity-log">
+                {questionHistory.length > 0 ? (
+                  questionHistory.map((item, index) => (
+                    <div key={index} className="activity-item">
+                      <div className="timestamp">{item.timestamp}</div>
+                      <strong>{language === 'english' ? 'Question' : '問題'} ({item.language}):</strong>
+                      <p>{item.question}</p>
+                      <strong>{language === 'english' ? 'Answer' : '答案'}:</strong>
+                      <p>{item.answer}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-words">
+                    {language === 'english' ? 'No questions asked yet' : '尚未提出問題'}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           
           <button 
-            className="close-button" 
+            className="exit-button" 
             onClick={toggleParentControls}
           >
             {language === 'english' ? 'Close' : '關閉'}
