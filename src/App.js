@@ -8,11 +8,50 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [language, setLanguage] = useState('english');
   const [error, setError] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [speechRecognition, setSpeechRecognition] = useState(null);
 
-  // Effect to log when component mounts
+  // Effect to initialize speech recognition
   useEffect(() => {
     console.log('App component mounted successfully');
-  }, []);
+    
+    // Initialize speech recognition if available
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+        setIsListening(true);
+      };
+      
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+        setIsListening(false);
+      };
+      
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log('Speech recognized:', transcript);
+        setQuestion(transcript);
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        setError(language === 'english' ? 
+          `Speech recognition error: ${event.error}` : 
+          `語音識別錯誤: ${event.error}`);
+      };
+      
+      setSpeechRecognition(recognition);
+    } else {
+      console.warn('Speech recognition not supported in this browser');
+    }
+  }, [language]);
 
   // UI text based on language
   const uiText = {
@@ -25,6 +64,34 @@ function App() {
   // Function to toggle language
   const toggleLanguage = () => {
     setLanguage(language === 'english' ? 'cantonese' : 'english');
+    
+    // Update speech recognition language if active
+    if (speechRecognition) {
+      speechRecognition.lang = language === 'english' ? 'zh-HK' : 'en-US';
+    }
+  };
+  
+  // Function to toggle speech recognition
+  const toggleSpeechRecognition = () => {
+    if (!speechRecognition) {
+      setError(language === 'english' ? 
+        'Speech recognition not supported in this browser' : 
+        '此瀏覽器不支持語音識別');
+      return;
+    }
+    
+    if (isListening) {
+      speechRecognition.stop();
+    } else {
+      setError('');
+      // Set language for speech recognition
+      speechRecognition.lang = language === 'english' ? 'en-US' : 'zh-HK';
+      try {
+        speechRecognition.start();
+      } catch (error) {
+        console.error('Speech recognition error:', error);
+      }
+    }
   };
 
   // Function to handle question submission
@@ -101,6 +168,14 @@ function App() {
             disabled={isLoading}
           >
             {uiText.askButton}
+          </button>
+          <button 
+            className={`mic-button ${isListening ? 'active' : ''}`}
+            onClick={toggleSpeechRecognition}
+            disabled={isLoading}
+            aria-label={language === 'english' ? 'Voice Input' : '語音輸入'}
+          >
+            🎤
           </button>
         </div>
         
