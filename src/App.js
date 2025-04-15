@@ -13,6 +13,15 @@ function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const speechSynthesisRef = useRef(window.speechSynthesis);
+  
+  // Parental control state
+  const [showParentControls, setShowParentControls] = useState(false);
+  const [parentalPIN, setParentalPIN] = useState('1234'); // Default PIN
+  const [enteredPIN, setEnteredPIN] = useState('');
+  const [isPINCorrect, setIsPINCorrect] = useState(false);
+  const [contentFiltering, setContentFiltering] = useState('moderate'); // 'none', 'moderate', 'strict'
+  const [timeLimit, setTimeLimit] = useState(30); // Time limit in minutes
+  const [showPINModal, setShowPINModal] = useState(false);
 
   // Effect to initialize speech recognition
   useEffect(() => {
@@ -132,6 +141,45 @@ function App() {
     }
     setIsMuted(!isMuted);
   };
+  
+  // Function to handle PIN entry
+  const handlePINEntry = (e) => {
+    setEnteredPIN(e.target.value);
+  };
+  
+  // Function to verify PIN
+  const verifyPIN = () => {
+    if (enteredPIN === parentalPIN) {
+      setIsPINCorrect(true);
+      setShowPINModal(false);
+      setShowParentControls(true);
+    } else {
+      setError(language === 'english' ? 'Incorrect PIN' : '密碼錯誤');
+      setEnteredPIN('');
+    }
+  };
+  
+  // Function to change PIN
+  const changePIN = (newPIN) => {
+    setParentalPIN(newPIN);
+  };
+  
+  // Function to toggle parental controls
+  const toggleParentControls = () => {
+    if (showParentControls) {
+      setShowParentControls(false);
+      setIsPINCorrect(false);
+    } else {
+      setShowPINModal(true);
+      setEnteredPIN('');
+    }
+  };
+  
+  // Function to close PIN modal
+  const closePINModal = () => {
+    setShowPINModal(false);
+    setEnteredPIN('');
+  };
 
   // Function to handle question submission
   const handleSubmit = async (e) => {
@@ -155,7 +203,9 @@ function App() {
         },
         body: JSON.stringify({
           question,
-          language
+          language,
+          contentFiltering,
+          timeLimit
         }),
       });
       
@@ -184,18 +234,27 @@ function App() {
         <div className="title-decoration"></div>
       </div>
       
-      <div className="language-toggles">
+      <div className="controls-container">
+        <div className="language-toggles">
+          <button 
+            className={`language-toggle ${language === 'english' ? 'active' : ''}`}
+            onClick={toggleLanguage}
+          >
+            English
+          </button>
+          <button 
+            className={`language-toggle ${language === 'cantonese' ? 'active' : ''}`}
+            onClick={toggleLanguage}
+          >
+            廣東話
+          </button>
+        </div>
+        
         <button 
-          className={`language-toggle ${language === 'english' ? 'active' : ''}`}
-          onClick={toggleLanguage}
+          className="parent-access-button"
+          onClick={toggleParentControls}
         >
-          English
-        </button>
-        <button 
-          className={`language-toggle ${language === 'cantonese' ? 'active' : ''}`}
-          onClick={toggleLanguage}
-        >
-          廣東話
+          {language === 'english' ? 'Parent Access' : '家長存取'}
         </button>
       </div>
       
@@ -241,6 +300,108 @@ function App() {
           <p>{answer || uiText.answerPlaceholder}</p>
         )}
       </div>
+      
+      {/* PIN Modal */}
+      {showPINModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>{language === 'english' ? 'Parent Access' : '家長存取'}</h2>
+            <p>{language === 'english' ? 'Enter PIN to access parental controls' : '輸入PIN碼以存取家長控制'}</p>
+            
+            <input 
+              type="password" 
+              value={enteredPIN} 
+              onChange={handlePINEntry}
+              placeholder="PIN"
+              maxLength="4"
+            />
+            
+            <div className="modal-buttons">
+              <button onClick={verifyPIN}>
+                {language === 'english' ? 'Submit' : '提交'}
+              </button>
+              <button onClick={closePINModal}>
+                {language === 'english' ? 'Cancel' : '取消'}
+              </button>
+            </div>
+            
+            {error && <div className="error-message">{error}</div>}
+          </div>
+        </div>
+      )}
+      
+      {/* Parental Control Panel */}
+      {showParentControls && (
+        <div className="parent-control-panel">
+          <h2>{language === 'english' ? 'Parental Controls' : '家長控制'}</h2>
+          
+          <div className="control-section">
+            <h3>{language === 'english' ? 'Content Filtering' : '內容過濾'}</h3>
+            <div className="radio-group">
+              <label>
+                <input 
+                  type="radio" 
+                  name="filtering" 
+                  value="none" 
+                  checked={contentFiltering === 'none'} 
+                  onChange={() => setContentFiltering('none')} 
+                />
+                {language === 'english' ? 'None' : '無'}
+              </label>
+              <label>
+                <input 
+                  type="radio" 
+                  name="filtering" 
+                  value="moderate" 
+                  checked={contentFiltering === 'moderate'} 
+                  onChange={() => setContentFiltering('moderate')} 
+                />
+                {language === 'english' ? 'Moderate' : '中等'}
+              </label>
+              <label>
+                <input 
+                  type="radio" 
+                  name="filtering" 
+                  value="strict" 
+                  checked={contentFiltering === 'strict'} 
+                  onChange={() => setContentFiltering('strict')} 
+                />
+                {language === 'english' ? 'Strict' : '嚴格'}
+              </label>
+            </div>
+          </div>
+          
+          <div className="control-section">
+            <h3>{language === 'english' ? 'Time Limit (minutes)' : '時限 (分鐘)'}</h3>
+            <input 
+              type="range" 
+              min="5" 
+              max="60" 
+              step="5" 
+              value={timeLimit} 
+              onChange={(e) => setTimeLimit(parseInt(e.target.value))} 
+            />
+            <span>{timeLimit}</span>
+          </div>
+          
+          <div className="control-section">
+            <h3>{language === 'english' ? 'Change PIN' : '更改PIN碼'}</h3>
+            <input 
+              type="password" 
+              placeholder={language === 'english' ? 'New PIN' : '新PIN碼'} 
+              maxLength="4" 
+              onChange={(e) => changePIN(e.target.value)} 
+            />
+          </div>
+          
+          <button 
+            className="close-button" 
+            onClick={toggleParentControls}
+          >
+            {language === 'english' ? 'Close' : '關閉'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

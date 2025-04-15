@@ -31,26 +31,68 @@ exports.handler = async function(event, context) {
 
   try {
     // Parse the request body
-    const { question, language } = JSON.parse(event.body);
+    const { question, language, contentFiltering, timeLimit } = JSON.parse(event.body);
     console.log(`Received question in ${language}: ${question}`);
+    console.log(`Content filtering level: ${contentFiltering}, Time limit: ${timeLimit} minutes`);
     
-    // For debugging, return a simple answer without calling the API
-    // This helps us test if the function is working at all
-    const debugMode = false;
+    // TEMPORARY DEBUG MODE - Return a test response without calling the API
+    // This helps us test if the function is being called correctly
+    const debugMode = true;
     if (debugMode) {
-      console.log('Debug mode active, returning test response');
+      console.log('Debug mode active - returning test response');
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({ 
           answer: language === 'english' 
-            ? 'This is a test answer from the Netlify function.' 
-            : '這是來自Netlify函數的測試答案。' 
+            ? 'This is a test answer from the Netlify function. If you can see this, the function is working!' 
+            : '這是來自Netlify函數的測試答案。如果您能看到這個，該函數正在工作！' 
         })
       };
     }
     
-    // System prompt based on language
+    // Get content filtering rules based on level
+    let contentFilteringRules = '';
+    
+    if (contentFiltering === 'strict') {
+      contentFilteringRules = language === 'english'
+        ? `CONTENT FILTERING (STRICT):
+- NEVER discuss topics related to violence, weapons, or dangerous activities
+- NEVER mention mature themes like dating, romance, or adult relationships
+- NEVER use slang or informal language
+- NEVER discuss scary or potentially frightening topics
+- ALWAYS redirect inappropriate questions to educational topics
+- ALWAYS maintain a positive, encouraging tone`
+        : `內容過濾（嚴格）：
+- 絕不討論與暴力、武器或危險活動相關的主題
+- 絕不提及約會、浪漫或成人關係等成熟主題
+- 絕不使用俚語或非正式語言
+- 絕不討論可怕或潛在令人恐懼的主題
+- 始終將不適當的問題重定向到教育主題
+- 始終保持積極、鼓勵的語調`;
+    } else if (contentFiltering === 'moderate') {
+      contentFilteringRules = language === 'english'
+        ? `CONTENT FILTERING (MODERATE):
+- Avoid discussing violent or dangerous activities
+- Avoid mature themes unless presented in an age-appropriate way
+- Redirect inappropriate questions to educational topics
+- Maintain a positive, encouraging tone`
+        : `內容過濾（中等）：
+- 避免討論暴力或危險活動
+- 避免成熟主題，除非以適合年齡的方式呈現
+- 將不適當的問題重定向到教育主題
+- 保持積極、鼓勵的語調`;
+    } else {
+      contentFilteringRules = language === 'english'
+        ? `CONTENT FILTERING (MINIMAL):
+- Ensure all content is age-appropriate for children 5-8 years old
+- Redirect clearly inappropriate questions to educational topics`
+        : `內容過濾（最小）：
+- 確保所有內容都適合5-8歲兒童的年齡
+- 將明顯不適當的問題重定向到教育主題`;
+    }
+    
+    // System prompt based on language and content filtering
     const systemPrompt = language === 'english' 
       ? `You provide educational responses to young children (5-8 years old). Follow these rules:
 
@@ -64,6 +106,8 @@ exports.handler = async function(event, context) {
 8. For history: maintain chronological clarity and factual accuracy
 9. Use simple analogies only when they don't distort the underlying logic
 10. Skip greetings and conclusions - focus on clear, accurate content
+
+${contentFilteringRules}
 
 Your goal is to develop young minds with factually correct, logically sound information.`
       : `你為年幕小的兒童（5-8歲）提供教育性的回答。請遵循以下規則：
@@ -79,15 +123,17 @@ Your goal is to develop young minds with factually correct, logically sound info
 9. 只在不歧曲基本邏輯的情況下使用簡單比喻
 10. 省略問候和結論 - 專注於清晰、準確的內容
 
+${contentFilteringRules}
+
 你的目標是使用事實正確、邏輯完善的信息培養年輕的頭腦。`;
     
     // Check if API key exists
     if (!process.env.GROK_API_KEY) {
       console.error('GROK_API_KEY environment variable is not set');
       return {
-        statusCode: 500,
+        statusCode: 200, // Return 200 even for errors during debugging
         headers,
-        body: JSON.stringify({ error: "API key is missing. Please check the environment variables." })
+        body: JSON.stringify({ answer: "API key is missing. Please check the environment variables." })
       };
     }
     
@@ -125,29 +171,13 @@ Your goal is to develop young minds with factually correct, logically sound info
   } catch (error) {
     console.error('Error in Netlify function:', error);
     
-    // Handle specific error codes
-    if (error.response) {
-      console.error('API response error:', error.response.status, error.response.data);
-      if (error.response.status === 401) {
-        return {
-          statusCode: 401,
-          headers,
-          body: JSON.stringify({ error: "Our key isn't working! Please tell an adult." })
-        };
-      } else if (error.response.status === 429) {
-        return {
-          statusCode: 429,
-          headers,
-          body: JSON.stringify({ error: "We're too chatty! Wait a bit and try again." })
-        };
-      }
-    }
-    
-    // Generic error
+    // During debug mode, return a more helpful error message
     return {
-      statusCode: 500,
+      statusCode: 200, // Return 200 even for errors during debugging
       headers,
-      body: JSON.stringify({ error: "Oops, our brain is taking a nap! Try again soon." })
+      body: JSON.stringify({ 
+        answer: `Error in Netlify function: ${error.message}. Please check the Netlify logs for more details.` 
+      })
     };
   }
 };
