@@ -190,19 +190,7 @@ function App() {
         utterance.lang = 'en-US';
       }
     } else {
-      // For Cantonese, prioritize voice with 粵語 in the name
-      let selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      
-      // If exact match not found, try to find any voice with 粵語 in the name
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.name.includes('粵語'));
-      }
-      
-      // If still not found, try to find any voice with zh-HK language code
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
-      }
-      
+      const selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
       if (selectedVoice) {
         utterance.voice = selectedVoice;
       } else {
@@ -300,33 +288,15 @@ function App() {
     
     // Find the selected voice
     const voices = speechSynthesisRef.current.getVoices();
+    const selectedVoice = voiceType === 'english' ? 
+      voices.find(voice => voice.name === englishVoice) : 
+      voices.find(voice => voice.name === cantoneseVoice);
     
-    if (voiceType === 'english') {
-      const selectedVoice = voices.find(voice => voice.name === englishVoice);
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      } else {
-        utterance.lang = 'en-US';
-      }
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
     } else {
-      // For Cantonese, prioritize voice with 粵語 in the name
-      let selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      
-      // If exact match not found, try to find any voice with 粵語 in the name
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.name.includes('粵語'));
-      }
-      
-      // If still not found, try to find any voice with zh-HK language code
-      if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
-      }
-      
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      } else {
-        utterance.lang = 'zh-HK';
-      }
+      // Fallback to language setting if voice not found
+      utterance.lang = voiceType === 'english' ? 'en-US' : 'zh-HK';
     }
     
     speechSynthesisRef.current.speak(utterance);
@@ -726,17 +696,22 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    {/* Only show voices with 粵語 in the name */}
+                    {/* Dynamically generate options from available voices */}
                     {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
-                      .filter(voice => voice.name.includes('粵語'))
+                      .filter(voice => 
+                        voice.lang === 'zh-HK' || 
+                        voice.name.includes('Cantonese') || 
+                        voice.name.includes('粵語')
+                      )
                       .map(voice => (
                         <option key={voice.name} value={voice.name}>
-                          {voice.name}
+                          {voice.name} ({voice.lang})
                         </option>
                       ))
                     }
-                    {/* Fallback option if no voices with 粵語 are found */}
-                    <option value="Google 粵語（香港）">Google 粵語（香港）</option>
+                    {/* Fallback options if no voices are found */}
+                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong) - Male</option>
+                    <option value="Google Cantonese Female (Hong Kong)">Google Cantonese (Hong Kong) - Female</option>
                   </select>
                   <button 
                     className="test-voice-button"
