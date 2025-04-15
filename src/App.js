@@ -199,32 +199,105 @@ function App() {
         utterance.lang = 'en-US';
       }
     } else {
-      // For Cantonese, try to find the exact selected voice first
-      let selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      console.log('Looking for exact match:', cantoneseVoice);
+      // Map the selected voice option to specific voice characteristics to ensure different profiles
+      let voiceCharacteristics;
+      console.log('Selected Cantonese voice option:', cantoneseVoice);
       
-      // If exact match not found, try to find a voice by partial name match
-      if (!selectedVoice) {
-        console.log('Exact match not found, trying partial match');
-        selectedVoice = voices.find(voice => 
-          voice.name.includes(cantoneseVoice) ||
-          (cantoneseVoice.includes('Sin-ji') && voice.name.includes('Sin')) ||
-          (cantoneseVoice.includes('Mei-Jia') && voice.name.includes('Mei')) ||
-          (cantoneseVoice.includes('Wan-Lung') && voice.name.includes('Wan')) ||
-          (cantoneseVoice.includes('Hong Kong') && voice.name.includes('Hong Kong'))
-        );
+      switch(cantoneseVoice) {
+        case 'Google 粵語（香港）':
+          // Male Cantonese voice
+          voiceCharacteristics = {
+            preferredNames: ['Google 粵語（香港）', 'Google Cantonese (Hong Kong)'],
+            preferredLangs: ['zh-HK'],
+            gender: 'male'
+          };
+          break;
+          
+        case 'Google Cantonese (Hong Kong)':
+          // Female Cantonese voice
+          voiceCharacteristics = {
+            preferredNames: ['Google Cantonese Female', 'Google 粵語女聲'],
+            preferredLangs: ['zh-HK'],
+            gender: 'female'
+          };
+          break;
+          
+        case 'Google Chinese (Hong Kong)':
+          // Another Cantonese variant
+          voiceCharacteristics = {
+            preferredNames: ['Google Chinese (Hong Kong)', 'Google 香港'],
+            preferredLangs: ['zh-HK', 'yue-HK'],
+            gender: 'any'
+          };
+          break;
+          
+        case 'Google Chinese':
+          // Mandarin voice
+          voiceCharacteristics = {
+            preferredNames: ['Google Chinese', 'Google 普通话', 'Google Mandarin'],
+            preferredLangs: ['zh-CN', 'zh-TW'],
+            gender: 'any'
+          };
+          break;
+          
+        default:
+          // Default fallback
+          voiceCharacteristics = {
+            preferredNames: ['Google 粵語', 'Google Cantonese', 'Google Chinese'],
+            preferredLangs: ['zh-HK', 'zh-CN', 'zh-TW'],
+            gender: 'any'
+          };
       }
       
-      // If still not found, try to find any Cantonese or Chinese voice
+      console.log('Looking for voice with characteristics:', voiceCharacteristics);
+      
+      // Try to find a voice matching the preferred characteristics
+      let selectedVoice = null;
+      
+      // First try exact name match from preferred names
+      for (const name of voiceCharacteristics.preferredNames) {
+        const match = voices.find(v => v.name === name);
+        if (match) {
+          selectedVoice = match;
+          console.log('Found exact name match:', match.name);
+          break;
+        }
+      }
+      
+      // If not found, try partial name match
       if (!selectedVoice) {
-        console.log('Partial match not found, trying any Chinese/Cantonese voice');
-        selectedVoice = voices.find(voice => 
-          voice.name.includes('Chinese') || 
-          voice.name.includes('Cantonese') ||
-          voice.lang === 'zh-HK' ||
-          voice.lang === 'zh-TW' ||
-          voice.lang === 'zh-CN'
+        for (const name of voiceCharacteristics.preferredNames) {
+          const match = voices.find(v => v.name.includes(name));
+          if (match) {
+            selectedVoice = match;
+            console.log('Found partial name match:', match.name);
+            break;
+          }
+        }
+      }
+      
+      // If still not found, try language match
+      if (!selectedVoice) {
+        for (const lang of voiceCharacteristics.preferredLangs) {
+          const match = voices.find(v => v.lang === lang);
+          if (match) {
+            selectedVoice = match;
+            console.log('Found language match:', match.name, match.lang);
+            break;
+          }
+        }
+      }
+      
+      // Last resort: any Chinese voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(v => 
+          v.lang.includes('zh') || 
+          v.name.includes('Chinese') || 
+          v.name.includes('Cantonese')
         );
+        if (selectedVoice) {
+          console.log('Found fallback Chinese voice:', selectedVoice.name);
+        }
       }
       
       if (selectedVoice) {
@@ -344,32 +417,105 @@ function App() {
         utterance.lang = 'en-US';
       }
     } else {
-      // For Cantonese, try to find the exact selected voice first
-      let selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
-      console.log('Testing - Looking for exact match:', cantoneseVoice);
+      // Map the selected voice option to specific voice characteristics to ensure different profiles
+      let voiceCharacteristics;
+      console.log('Testing - Selected Cantonese voice option:', cantoneseVoice);
       
-      // If exact match not found, try to find a voice by partial name match
-      if (!selectedVoice) {
-        console.log('Testing - Exact match not found, trying partial match');
-        selectedVoice = voices.find(voice => 
-          voice.name.includes(cantoneseVoice) ||
-          (cantoneseVoice.includes('Sin-ji') && voice.name.includes('Sin')) ||
-          (cantoneseVoice.includes('Mei-Jia') && voice.name.includes('Mei')) ||
-          (cantoneseVoice.includes('Wan-Lung') && voice.name.includes('Wan')) ||
-          (cantoneseVoice.includes('Hong Kong') && voice.name.includes('Hong Kong'))
-        );
+      switch(cantoneseVoice) {
+        case 'Google 粵語（香港）':
+          // Male Cantonese voice
+          voiceCharacteristics = {
+            preferredNames: ['Google 粵語（香港）', 'Google Cantonese (Hong Kong)'],
+            preferredLangs: ['zh-HK'],
+            gender: 'male'
+          };
+          break;
+          
+        case 'Google Cantonese (Hong Kong)':
+          // Female Cantonese voice
+          voiceCharacteristics = {
+            preferredNames: ['Google Cantonese Female', 'Google 粵語女聲'],
+            preferredLangs: ['zh-HK'],
+            gender: 'female'
+          };
+          break;
+          
+        case 'Google Chinese (Hong Kong)':
+          // Another Cantonese variant
+          voiceCharacteristics = {
+            preferredNames: ['Google Chinese (Hong Kong)', 'Google 香港'],
+            preferredLangs: ['zh-HK', 'yue-HK'],
+            gender: 'any'
+          };
+          break;
+          
+        case 'Google Chinese':
+          // Mandarin voice
+          voiceCharacteristics = {
+            preferredNames: ['Google Chinese', 'Google 普通话', 'Google Mandarin'],
+            preferredLangs: ['zh-CN', 'zh-TW'],
+            gender: 'any'
+          };
+          break;
+          
+        default:
+          // Default fallback
+          voiceCharacteristics = {
+            preferredNames: ['Google 粵語', 'Google Cantonese', 'Google Chinese'],
+            preferredLangs: ['zh-HK', 'zh-CN', 'zh-TW'],
+            gender: 'any'
+          };
       }
       
-      // If still not found, try to find any Cantonese or Chinese voice
+      console.log('Testing - Looking for voice with characteristics:', voiceCharacteristics);
+      
+      // Try to find a voice matching the preferred characteristics
+      let selectedVoice = null;
+      
+      // First try exact name match from preferred names
+      for (const name of voiceCharacteristics.preferredNames) {
+        const match = voices.find(v => v.name === name);
+        if (match) {
+          selectedVoice = match;
+          console.log('Testing - Found exact name match:', match.name);
+          break;
+        }
+      }
+      
+      // If not found, try partial name match
       if (!selectedVoice) {
-        console.log('Testing - Partial match not found, trying any Chinese/Cantonese voice');
-        selectedVoice = voices.find(voice => 
-          voice.name.includes('Chinese') || 
-          voice.name.includes('Cantonese') ||
-          voice.lang === 'zh-HK' ||
-          voice.lang === 'zh-TW' ||
-          voice.lang === 'zh-CN'
+        for (const name of voiceCharacteristics.preferredNames) {
+          const match = voices.find(v => v.name.includes(name));
+          if (match) {
+            selectedVoice = match;
+            console.log('Testing - Found partial name match:', match.name);
+            break;
+          }
+        }
+      }
+      
+      // If still not found, try language match
+      if (!selectedVoice) {
+        for (const lang of voiceCharacteristics.preferredLangs) {
+          const match = voices.find(v => v.lang === lang);
+          if (match) {
+            selectedVoice = match;
+            console.log('Testing - Found language match:', match.name, match.lang);
+            break;
+          }
+        }
+      }
+      
+      // Last resort: any Chinese voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(v => 
+          v.lang.includes('zh') || 
+          v.name.includes('Chinese') || 
+          v.name.includes('Cantonese')
         );
+        if (selectedVoice) {
+          console.log('Testing - Found fallback Chinese voice:', selectedVoice.name);
+        }
       }
       
       if (selectedVoice) {
@@ -778,16 +924,10 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
-                    <option value="Google 粵語（香港）">Google 粵語（香港）</option>
-                    <option value="Microsoft Xiaoxiao">Microsoft Xiaoxiao - 小曦 (女聲)</option>
-                    <option value="Microsoft Yunxi">Microsoft Yunxi - 雲溪 (女聲)</option>
-                    <option value="Microsoft Yunyang">Microsoft Yunyang - 雲陽 (男聲)</option>
-                    <option value="Microsoft Kangkang">Microsoft Kangkang - 康康 (男聲)</option>
-                    <option value="Microsoft HiuGaai">Microsoft HiuGaai - 曙街 (粵語女聲)</option>
-                    <option value="Microsoft HiuMaan">Microsoft HiuMaan - 曙文 (粵語女聲)</option>
-                    <option value="Microsoft WanLung">Microsoft WanLung - 雲龍 (粵語男聲)</option>
-                    <option value="Google Cantonese">Google Cantonese (Hong Kong)</option>
-                    <option value="Google Chinese">Google Chinese (Mandarin)</option>
+                    <option value="Google 粵語（香港）">Google 粵語（香港） - 男聲</option>
+                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong) - Female</option>
+                    <option value="Google Chinese (Hong Kong)">Google Chinese (Hong Kong) - 粵語</option>
+                    <option value="Google Chinese">Google Chinese (Mandarin) - 普通話</option>
                   </select>
                   <button 
                     className="test-voice-button"
