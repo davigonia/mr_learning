@@ -1,10 +1,30 @@
 const axios = require('axios');
 
 exports.handler = async function(event, context) {
+  console.log('Netlify function called');
+  
+  // Add CORS headers to allow requests from any origin
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+  
+  // Handle OPTIONS request (preflight CORS check)
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+  
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method Not Allowed' })
     };
   }
@@ -12,6 +32,23 @@ exports.handler = async function(event, context) {
   try {
     // Parse the request body
     const { question, language } = JSON.parse(event.body);
+    console.log(`Received question in ${language}: ${question}`);
+    
+    // For debugging, return a simple answer without calling the API
+    // This helps us test if the function is working at all
+    const debugMode = false;
+    if (debugMode) {
+      console.log('Debug mode active, returning test response');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          answer: language === 'english' 
+            ? 'This is a test answer from the Netlify function.' 
+            : '這是來自Netlify函數的測試答案。' 
+        })
+      };
+    }
     
     // System prompt based on language
     const systemPrompt = language === 'english' 
@@ -44,6 +81,17 @@ Your goal is to develop young minds with factually correct, logically sound info
 
 你的目標是使用事實正確、邏輯完善的信息培養年輕的頭腦。`;
     
+    // Check if API key exists
+    if (!process.env.GROK_API_KEY) {
+      console.error('GROK_API_KEY environment variable is not set');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: "API key is missing. Please check the environment variables." })
+      };
+    }
+    
+    console.log('Making request to Grok API');
     // Make request to Grok API
     const response = await axios.post('https://api.x.ai/v1/chat/completions', {
       model: 'grok-3',
@@ -59,36 +107,37 @@ Your goal is to develop young minds with factually correct, logically sound info
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.REACT_APP_GROK_API_KEY}`
+        'Authorization': `Bearer ${process.env.GROK_API_KEY}`
       }
     });
     
     // Extract answer from response
     const answer = response.data.choices[0].message.content;
+    console.log('Received answer from Grok API:', answer);
     
     // Return answer to client
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers,
       body: JSON.stringify({ answer })
     };
     
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in Netlify function:', error);
     
     // Handle specific error codes
     if (error.response) {
+      console.error('API response error:', error.response.status, error.response.data);
       if (error.response.status === 401) {
         return {
           statusCode: 401,
+          headers,
           body: JSON.stringify({ error: "Our key isn't working! Please tell an adult." })
         };
       } else if (error.response.status === 429) {
         return {
           statusCode: 429,
+          headers,
           body: JSON.stringify({ error: "We're too chatty! Wait a bit and try again." })
         };
       }
@@ -97,6 +146,7 @@ Your goal is to develop young minds with factually correct, logically sound info
     // Generic error
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: "Oops, our brain is taking a nap! Try again soon." })
     };
   }

@@ -64,32 +64,35 @@ function App() {
 
   // Initialize speech recognition and get available voices
   useEffect(() => {
+    console.log('Initializing app...');
     // Initialize speech recognition
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      console.log('Speech recognition is available');
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       speechRecognition.current = new SpeechRecognition();
       speechRecognition.current.continuous = false;
-      speechRecognition.current.interimResults = false;
-      speechRecognition.current.maxAlternatives = 1;
+      speechRecognition.current.interimResults = true;
       
-      // Set up the onresult event handler
-      speechRecognition.current.onresult = (event) => {
-        console.log('Speech recognition result received:', event);
-        if (event.results && event.results.length > 0) {
-          const transcript = event.results[0][0].transcript;
-          console.log('Transcript:', transcript);
-          
-          // Update the question state
-          setQuestion(transcript);
-          
-          // We'll handle the automatic submission in a separate effect
-          // This avoids issues with function closures and state updates
-          speechRecognition.current.voiceInputCompleted = true;
-        }
+      speechRecognition.current.onstart = () => {
+        setIsListening(true);
+        setError('');
       };
       
-      // Flag to track when voice input is completed
-      speechRecognition.current.voiceInputCompleted = false;
+      speechRecognition.current.onend = () => {
+        setIsListening(false);
+        // Set a flag to indicate voice input has completed
+        speechRecognition.current.voiceInputCompleted = true;
+      };
+      
+      speechRecognition.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+        
+        setQuestion(transcript);
+      };
+      
       
       // Set up other event handlers
       speechRecognition.current.onerror = (event) => {
@@ -469,6 +472,7 @@ function App() {
 
   // Function to handle API call to Grok
   const askGrok = async () => {
+    console.log('askGrok called');
     // Use the current question from state
     if (!question.trim()) {
       setError('Please ask a question first!');
@@ -509,34 +513,66 @@ function App() {
     setError('');
     
     try {
-      // Call the Netlify serverless function
-      const response = await fetch('/.netlify/functions/ask', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: processedQuestion,
-          language: language
-        }),
-      });
+      console.log('Calling Netlify function at /.netlify/functions/ask');
+      // For debugging, let's try a simple answer if we're in development mode
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('Development mode detected, using local server');
+        // Call the local server
+        const response = await fetch('/api/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            question: processedQuestion,
+            language: language
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Something went wrong');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Something went wrong');
+        }
+
+        const data = await response.json();
+        const grokAnswer = data.answer;
+        
+        // Cache the answer
+        answerCache[cacheKey] = grokAnswer;
+        
+        setAnswer(grokAnswer);
+        speakAnswer(grokAnswer);
+      } else {
+        console.log('Production mode detected, using Netlify function');
+        // Call the Netlify serverless function
+        const response = await fetch('/.netlify/functions/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            question: processedQuestion,
+            language: language
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Something went wrong');
+        }
+
+        const data = await response.json();
+        const grokAnswer = data.answer;
+        
+        // Cache the answer
+        answerCache[cacheKey] = grokAnswer;
+        
+        setAnswer(grokAnswer);
+        speakAnswer(grokAnswer);
       }
-
-      const data = await response.json();
-      const grokAnswer = data.answer;
-      
-      // Cache the answer
-      answerCache[cacheKey] = grokAnswer;
-      
-      setAnswer(grokAnswer);
-      speakAnswer(grokAnswer);
       
       // Add to activity log
-      const newActivity = { question: processedQuestion, answer: grokAnswer, timestamp: new Date().toISOString() };
+      const newActivity = { question: processedQuestion, answer: answerCache[cacheKey], timestamp: new Date().toISOString() };
       setActivityLog(prev => [newActivity, ...prev.slice(0, 19)]);
       
     } catch (error) {
