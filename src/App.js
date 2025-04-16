@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 
 // Device detection utilities
@@ -459,11 +460,50 @@ function App() {
           console.log('Auto-submitting after voice input completion');
           
           // Call the handleSubmit function to submit to the real API
-          handleSubmit();
+          if (question.trim()) {
+            // Use a direct form submission instead of the handleSubmit reference
+            // to avoid circular dependency issues
+            setIsLoading(true);
+            fetch('/.netlify/functions/ask', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                question: question.trim(),
+                language,
+                contentFiltering,
+                timeLimit,
+                bannedWords
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              setAnswer(data.answer);
+              // Add to question history
+              setQuestionHistory([
+                { question: question.trim(), answer: data.answer, timestamp: new Date().toISOString() },
+                ...questionHistory
+              ]);
+              // Speak the answer if not muted
+              if (!isMuted) {
+                setTimeout(() => speakText(data.answer), 500);
+              }
+            })
+            .catch(error => {
+              console.error('Error in auto-submission:', error);
+              setError(language === 'english' ? 
+                'Error communicating with the AI. Please try again.' : 
+                '與AI通信時出錯。請再試一次。');
+            })
+            .finally(() => {
+              setIsLoading(false);
+            });
+          }
         }, 2000); // 2 second delay
       }
     }
-  }, [isListening, question, language, handleSubmit]);
+  }, [isListening, question, language, isMuted, contentFiltering, timeLimit, bannedWords, questionHistory]);
 
   // UI text based on language
   const englishUIText = {
