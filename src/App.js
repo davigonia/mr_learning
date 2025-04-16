@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
+// Device detection utilities
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+const isIOSDevice = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
+const isAndroidDevice = () => {
+  return /Android/i.test(navigator.userAgent);
+};
+
 function App() {
   // Basic state
   const [question, setQuestion] = useState('');
@@ -31,6 +44,11 @@ function App() {
   const [englishVoice, setEnglishVoice] = useState('Google US English');
   const [cantoneseVoice, setCantoneseVoice] = useState('Google Cantonese (Hong Kong)');
   
+  // Device detection state
+  const [isMobile, setIsMobile] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  
   // Question history state
   const [questionHistory, setQuestionHistory] = useState([]);
   
@@ -41,6 +59,23 @@ function App() {
 
   // Create a ref to hold the speech recognition object
   const speechRecognitionRef = useRef(null);
+  
+  // Detect device type on component mount
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+    setIsIOS(isIOSDevice());
+    setIsAndroid(isAndroidDevice());
+    
+    // Initialize audio context for mobile devices
+    if (isMobileDevice()) {
+      try {
+        window.audioContextInstance = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('AudioContext initialized for mobile device');
+      } catch (e) {
+        console.error('Could not initialize AudioContext:', e);
+      }
+    }
+  }, []);
 
   // Function to set up speech recognition
   const setupSpeechRecognition = () => {
@@ -426,28 +461,28 @@ function App() {
     if (isMuted || !text) return;
 
     console.log('Speaking text:', text.substring(0, 50) + '...');
-
+    
     // Cancel any ongoing speech
     speechSynthesisRef.current.cancel();
-
-    // Detect device type for voice selection and audio handling
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isAndroid = /Android/i.test(navigator.userAgent);
-
+    
+    // Log device information for debugging
+    console.log('Device info:', { isMobile, isIOS, isAndroid });
+    
     // Try to resume AudioContext for mobile devices
     if (isMobile && window.audioContextInstance) {
-      console.log('Attempting to resume AudioContext before speaking...');
-      if (window.audioContextInstance.state === 'suspended') {
-        window.audioContextInstance.resume().then(() => {
-          console.log('AudioContext resumed before speaking');
-        }).catch(err => {
-          console.error('Failed to resume AudioContext before speaking:', err);
-        });
+      try {
+        if (window.audioContextInstance.state === 'suspended') {
+          window.audioContextInstance.resume().then(() => {
+            console.log('AudioContext resumed successfully');
+          }).catch(err => {
+            console.error('Error resuming AudioContext:', err);
+          });
+        }
+      } catch (e) {
+        console.error('Exception handling AudioContext:', e);
       }
     }
 
-    // Get available voices
     let voices = speechSynthesisRef.current.getVoices();
     console.log(`Found ${voices.length} voices`);
 
@@ -459,12 +494,22 @@ function App() {
         voices = speechSynthesisRef.current.getVoices();
         console.log(`Voices loaded after force: ${voices.length}`);
       };
+      
       // Try to trigger onvoiceschanged
       const dummy = new SpeechSynthesisUtterance(' ');
       speechSynthesisRef.current.speak(dummy);
       speechSynthesisRef.current.cancel();
+      
       // Get voices again
       voices = speechSynthesisRef.current.getVoices();
+    }
+    
+    // Log all available voices for debugging
+    if (voices.length > 0) {
+      console.log('Available voices:');
+      voices.forEach((voice, index) => {
+        console.log(`${index}: ${voice.name} (${voice.lang})`);
+      });
     }
 
     // Set speaking to true at the beginning
@@ -490,14 +535,31 @@ function App() {
       if (!selectedVoice) {
         console.log('Selected English voice not found, looking for alternatives');
         if (isIOS) {
-          selectedVoice = voices.find(voice => voice.name.includes('Samantha') || voice.name.includes('Daniel'));
+          // Try iOS specific voices first
+          selectedVoice = voices.find(voice => 
+            voice.name.includes('Samantha') || 
+            voice.name.includes('Daniel') ||
+            voice.name.includes('Karen') ||
+            voice.name.includes('Alex'));
         } else if (isAndroid) {
-          selectedVoice = voices.find(voice => voice.lang === 'en-US' || voice.lang === 'en-GB');
-        } else {
+          // Try Android specific voices first
+          selectedVoice = voices.find(voice => 
+            voice.lang === 'en-US' || 
+            voice.lang === 'en-GB');
+        }
+        
+        // If still not found, try any English voice
+        if (!selectedVoice) {
           selectedVoice = voices.find(voice =>
             voice.lang.startsWith('en') ||
             voice.name.toLowerCase().includes('english')
           );
+        }
+        
+        // Last resort: use any available voice and set lang parameter
+        if (!selectedVoice && voices.length > 0) {
+          console.log('Using first available voice as fallback');
+          selectedVoice = voices[0];
         }
       }
     } else {
@@ -512,11 +574,21 @@ function App() {
       if (!selectedVoice) {
         console.log('Selected Cantonese voice not found, looking for alternatives');
         if (isIOS) {
-          selectedVoice = voices.find(voice => voice.name.includes('Sin-ji'));
+          // Try iOS specific voices first
+          selectedVoice = voices.find(voice => 
+            voice.name.includes('Sin-ji') ||
+            voice.name.includes('Ting-Ting') ||
+            voice.name.includes('Mei-Jia'));
+        } else if (isAndroid) {
+          // Try Android specific voices first
+          selectedVoice = voices.find(voice => 
+            voice.lang === 'zh-HK' || 
+            voice.lang === 'zh-TW' || 
+            voice.lang === 'zh-CN');
         }
 
+        // If still not found, try any Chinese voice
         if (!selectedVoice) {
-          // Try to find any Chinese voice
           selectedVoice = voices.find(voice =>
             voice.lang === 'zh-HK' ||
             voice.lang === 'zh-TW' ||
@@ -524,6 +596,12 @@ function App() {
             voice.name.includes('Chinese') ||
             voice.name.includes('Cantonese')
           );
+        }
+        
+        // Last resort: use any available voice and set lang parameter
+        if (!selectedVoice && voices.length > 0) {
+          console.log('Using first available voice as fallback for Cantonese');
+          selectedVoice = voices[0];
         }
       }
     }
@@ -655,71 +733,45 @@ function App() {
         utterance.lang = langCode;
       }
 
-      utterance.rate = 0.9; // Slightly slower for children
-      utterance.volume = 1.0; // Maximum volume for better audibility on mobile
-
-      // Special handling for mobile devices
+      // Adjust speech parameters based on device type
       if (isMobile) {
-        // On mobile, we need to make sure audio context is resumed
-        // This helps with voice output on iOS devices
-        if (window.audioContextInstance && window.audioContextInstance.state === 'suspended') {
-          console.log('Resuming AudioContext before utterance...');
-          try {
-            window.audioContextInstance.resume().then(() => {
-              console.log('AudioContext resumed successfully before utterance');
-            }).catch(err => {
-              console.error('Error resuming AudioContext:', err);
-            });
-          } catch (e) {
-            console.error('Exception trying to resume AudioContext:', e);
-          }
-        }
-
-        // Set higher volume for mobile devices
-        utterance.volume = 1.0;
+        // Mobile devices need higher volume and adjusted rate
+        utterance.volume = 1.0; // Maximum volume
         
-        // iOS specific handling
         if (isIOS) {
-          // iOS requires user interaction to start audio
-          // We'll use a shorter chunk size for iOS
+          // iOS specific settings
           utterance.rate = 0.95; // Slightly faster to prevent iOS from cutting off
+          utterance.pitch = 1.0; // Neutral pitch
+        } else if (isAndroid) {
+          // Android specific settings
+          utterance.rate = 0.85; // Slower for better clarity on Android
+          utterance.pitch = 1.0; // Neutral pitch
+        } else {
+          // Other mobile devices
+          utterance.rate = 0.9;
         }
-        
-        // Android specific handling
-        if (isAndroid) {
-          // Android sometimes needs a slightly different approach
-          utterance.pitch = 1.0; // Neutral pitch works best on Android
-          utterance.rate = 0.85; // Slightly slower for Android clarity
+      } else {
+        // Desktop settings
+        utterance.rate = 0.9; // Slightly slower for children
+        utterance.volume = 1.0;
+      }
+      
+      // Try to resume AudioContext before speaking on mobile
+      if (isMobile && window.audioContextInstance && window.audioContextInstance.state === 'suspended') {
+        try {
+          window.audioContextInstance.resume().then(() => {
+            console.log('AudioContext resumed before utterance');
+          }).catch(err => {
+            console.error('Error resuming AudioContext:', err);
+          });
+        } catch (e) {
+          console.error('Exception trying to resume AudioContext:', e);
         }
-
-        // When this chunk ends, speak the next one (for mobile too)
-        utterance.onend = () => {
-          console.log('Mobile utterance ended, moving to next chunk');
-          speakChunks(index + 1);
-        };
-
-        utterance.onerror = (event) => {
-          console.error('Mobile speech synthesis error:', event);
-          // Try to continue with next chunk despite error
-          speakChunks(index + 1);
-        };
-
-        // Add a small delay before speaking on mobile
-        setTimeout(() => {
-          try {
-            console.log('Speaking on mobile device, chunk:', index + 1, 'of', textChunks.length);
-            speechSynthesisRef.current.speak(utterance);
-          } catch (e) {
-            console.error('Error speaking utterance on mobile:', e);
-            // Try to continue with next chunk despite error
-            speakChunks(index + 1);
-          }
-        }, 150); // Slightly longer delay for better mobile compatibility
-        return; // Return early as we're handling speech in the timeout
       }
 
-      // When this chunk ends, speak the next one
+      // Set up event handlers for all devices
       utterance.onend = () => {
+        console.log(`Utterance ended, chunk ${index + 1} of ${textChunks.length}`);
         speakChunks(index + 1);
       };
 
@@ -729,8 +781,29 @@ function App() {
         speakChunks(index + 1);
       };
 
-      // Speak the current chunk
-      speechSynthesisRef.current.speak(utterance);
+      // Special handling for mobile devices
+      if (isMobile) {
+        // Add a small delay before speaking on mobile for better compatibility
+        setTimeout(() => {
+          try {
+            console.log(`Speaking on mobile, chunk ${index + 1} of ${textChunks.length}`);
+            speechSynthesisRef.current.speak(utterance);
+          } catch (e) {
+            console.error('Error speaking on mobile:', e);
+            // Try to continue with next chunk despite error
+            speakChunks(index + 1);
+          }
+        }, 150);
+      } else {
+        // Desktop devices can speak immediately
+        try {
+          console.log(`Speaking on desktop, chunk ${index + 1} of ${textChunks.length}`);
+          speechSynthesisRef.current.speak(utterance);
+        } catch (e) {
+          console.error('Error speaking on desktop:', e);
+          speakChunks(index + 1);
+        }
+      }
     };
 
     // Start speaking from the first chunk
