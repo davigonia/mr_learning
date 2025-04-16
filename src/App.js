@@ -40,9 +40,9 @@ function App() {
   const [bannedWords, setBannedWords] = useState([]);
   const [newBannedWord, setNewBannedWord] = useState('');
   
-  // Voice profile state
-  const [englishVoice, setEnglishVoice] = useState('Google US English');
-  const [cantoneseVoice, setCantoneseVoice] = useState('Google Cantonese (Hong Kong)');
+  // Voice profile state - using more generic names that are likely to exist on most devices
+  const [englishVoice, setEnglishVoice] = useState('en-US');
+  const [cantoneseVoice, setCantoneseVoice] = useState('zh-HK');
   
   // Device detection state
   const [isMobile, setIsMobile] = useState(false);
@@ -468,6 +468,16 @@ function App() {
     // Log device information for debugging
     console.log('Device info:', { isMobile, isIOS, isAndroid });
     
+    // Create a user interaction to unlock audio on iOS
+    if (isIOS) {
+      const clickEvent = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+      document.body.dispatchEvent(clickEvent);
+    }
+    
     // Try to resume AudioContext for mobile devices
     if (isMobile && window.audioContextInstance) {
       try {
@@ -567,38 +577,64 @@ function App() {
       // Log the current Cantonese voice setting
       console.log('Using Cantonese voice setting:', cantoneseVoice);
 
-      // Try to find the selected Cantonese voice
-      selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      // Try to find a voice with the exact language code first
+      selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
+      console.log('Found zh-HK voice:', selectedVoice ? selectedVoice.name : 'None');
+      
+      // If not found, try to find the selected Cantonese voice by name
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.name === cantoneseVoice || 
+                                           voice.name.includes('Chinese') || 
+                                           voice.name.includes('Cantonese'));
+        console.log('Found by name:', selectedVoice ? selectedVoice.name : 'None');
+      }
 
-      // If not found, try to find any Cantonese voice
+      // If still not found, try to find any Chinese voice
       if (!selectedVoice) {
         console.log('Selected Cantonese voice not found, looking for alternatives');
+        
+        // Try device-specific voices first
         if (isIOS) {
-          // Try iOS specific voices first
+          // Common iOS Chinese voices
           selectedVoice = voices.find(voice => 
             voice.name.includes('Sin-ji') ||
             voice.name.includes('Ting-Ting') ||
-            voice.name.includes('Mei-Jia'));
+            voice.name.includes('Mei-Jia') ||
+            voice.name.includes('Siri'));
+          console.log('iOS voice found:', selectedVoice ? selectedVoice.name : 'None');
         } else if (isAndroid) {
-          // Try Android specific voices first
+          // Android Chinese voices
           selectedVoice = voices.find(voice => 
             voice.lang === 'zh-HK' || 
             voice.lang === 'zh-TW' || 
             voice.lang === 'zh-CN');
+          console.log('Android voice found:', selectedVoice ? selectedVoice.name : 'None');
         }
 
-        // If still not found, try any Chinese voice
+        // If still not found, try any Chinese voice by language code
         if (!selectedVoice) {
           selectedVoice = voices.find(voice =>
+            voice.lang.startsWith('zh') ||
             voice.lang === 'zh-HK' ||
             voice.lang === 'zh-TW' ||
-            voice.lang === 'zh-CN' ||
-            voice.name.includes('Chinese') ||
-            voice.name.includes('Cantonese')
+            voice.lang === 'zh-CN'
           );
+          console.log('Any Chinese voice found:', selectedVoice ? selectedVoice.name : 'None');
         }
         
-        // Last resort: use any available voice and set lang parameter
+        // Try by name as last resort
+        if (!selectedVoice) {
+          selectedVoice = voices.find(voice =>
+            voice.name.includes('Chinese') ||
+            voice.name.includes('Cantonese') ||
+            voice.name.includes('Hong Kong') ||
+            voice.name.includes('Taiwan') ||
+            voice.name.includes('China')
+          );
+          console.log('Voice by name found:', selectedVoice ? selectedVoice.name : 'None');
+        }
+        
+        // Absolute last resort: use any available voice and set lang parameter
         if (!selectedVoice && voices.length > 0) {
           console.log('Using first available voice as fallback for Cantonese');
           selectedVoice = voices[0];
@@ -780,30 +816,42 @@ function App() {
         // Try to continue with next chunk despite error
         speakChunks(index + 1);
       };
-
-      // Special handling for mobile devices
-      if (isMobile) {
-        // Add a small delay before speaking on mobile for better compatibility
-        setTimeout(() => {
-          try {
-            console.log(`Speaking on mobile, chunk ${index + 1} of ${textChunks.length}`);
-            speechSynthesisRef.current.speak(utterance);
-          } catch (e) {
-            console.error('Error speaking on mobile:', e);
-            // Try to continue with next chunk despite error
-            speakChunks(index + 1);
-          }
-        }, 150);
-      } else {
-        // Desktop devices can speak immediately
+      
+      // Force a small pause between chunks for all devices
+      const speakWithDelay = () => {
         try {
-          console.log(`Speaking on desktop, chunk ${index + 1} of ${textChunks.length}`);
+          console.log(`Speaking chunk ${index + 1} of ${textChunks.length}`);
+          console.log(`Using voice: ${selectedVoice ? selectedVoice.name : 'default'} (${utterance.lang})`);
+          
+          // Create a user interaction to unlock audio on iOS
+          if (isIOS) {
+            const clickEvent = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true
+            });
+            document.body.dispatchEvent(clickEvent);
+          }
+          
+          // Resume AudioContext if needed
+          if (isMobile && window.audioContextInstance && 
+              window.audioContextInstance.state === 'suspended') {
+            window.audioContextInstance.resume().catch(err => {
+              console.error('Error resuming AudioContext before speaking:', err);
+            });
+          }
+          
+          // Speak the utterance
           speechSynthesisRef.current.speak(utterance);
         } catch (e) {
-          console.error('Error speaking on desktop:', e);
-          speakChunks(index + 1);
+          console.error('Error speaking:', e);
+          // Try to continue with next chunk despite error
+          setTimeout(() => speakChunks(index + 1), 500);
         }
-      }
+      };
+      
+      // Add a delay for all devices to ensure better compatibility
+      setTimeout(speakWithDelay, isMobile ? 250 : 150);
     };
 
     // Start speaking from the first chunk
@@ -893,12 +941,17 @@ function App() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
+      // Use OPTIONS method instead of HEAD since our Netlify function accepts OPTIONS
       const response = await fetch('/.netlify/functions/ask', {
-        method: 'HEAD',
-        signal: controller.signal
+        method: 'OPTIONS',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
       clearTimeout(timeoutId);
+      console.log('API connection check response:', response.status, response.ok);
       return response.ok;
     } catch (error) {
       console.error('API connection check failed:', error);
@@ -992,8 +1045,13 @@ function App() {
         ...questionHistory
       ]);
 
-      // Speak the answer
-      speakText(data.answer);
+      // Speak the answer if not muted
+      if (!isMuted) {
+        console.log('Speaking answer...');
+        setTimeout(() => speakText(data.answer), 500); // Add a small delay before speaking
+      } else {
+        console.log('Audio is muted, not speaking answer');
+      }
 
     } catch (error) {
       console.error('Error asking question:', error);
