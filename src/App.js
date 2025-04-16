@@ -1491,23 +1491,44 @@ function App() {
                     value={englishVoice}
                     onChange={(e) => setEnglishVoice(e.target.value)}
                   >
+                    {/* Preferred English voices first */}
+                    <optgroup label="Recommended Voices">
+                      <option value="Google US English">Google US English</option>
+                      <option value="Microsoft David - English (United States)">Microsoft David (US)</option>
+                      <option value="Microsoft Zira - English (United States)">Microsoft Zira (US)</option>
+                      <option value="Samantha">Samantha (iOS)</option>
+                      <option value="Alex">Alex (macOS)</option>
+                    </optgroup>
+
                     {/* Dynamically generate options from available voices */}
-                    {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
-                      .filter(voice => voice.lang.includes('en'))
-                      .map(voice => (
-                        <option key={voice.name} value={voice.name}>
-                          {voice.name} ({voice.lang})
-                        </option>
-                      ))
-                    }
-                    {/* Fallback option if no voices are found */}
-                    <option value="Google US English">Google US English</option>
+                    <optgroup label="Available on Your Device">
+                      {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
+                        .filter(voice => {
+                          // Filter for English voices
+                          return voice.lang.includes('en') || 
+                                 voice.name.toLowerCase().includes('english') || 
+                                 voice.name.includes('US') || 
+                                 voice.name.includes('UK');
+                        })
+                        .sort((a, b) => {
+                          // Sort by language code (en-US first) then by name
+                          if (a.lang === 'en-US' && b.lang !== 'en-US') return -1;
+                          if (a.lang !== 'en-US' && b.lang === 'en-US') return 1;
+                          return a.name.localeCompare(b.name);
+                        })
+                        .map(voice => (
+                          <option key={voice.name} value={voice.name}>
+                            {voice.name} ({voice.lang})
+                          </option>
+                        ))
+                      }
+                    </optgroup>
                   </select>
                   <button 
                     className="test-voice-button"
                     onClick={() => speakText('This is a test of the English voice.')}
                   >
-                    Test Voice
+                    <span role="img" aria-label="Speaker">🔊</span> Test Voice
                   </button>
                 </div>
                 
@@ -1517,28 +1538,54 @@ function App() {
                     value={cantoneseVoice}
                     onChange={(e) => setCantoneseVoice(e.target.value)}
                   >
+                    {/* Preferred Cantonese voices first */}
+                    <optgroup label="Recommended Voices">
+                      <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong)</option>
+                      <option value="Sin-ji">Sin-ji (iOS)</option>
+                      <option value="Microsoft Tracy - Chinese (Traditional, Hong Kong S.A.R.)">Microsoft Tracy (HK)</option>
+                      <option value="Microsoft Huihui - Chinese (Simplified, PRC)">Microsoft Huihui (Simplified)</option>
+                    </optgroup>
+
                     {/* Dynamically generate options from available voices */}
-                    {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
-                      .filter(voice => 
-                        voice.lang === 'zh-HK' || 
-                        voice.name.includes('Cantonese') || 
-                        voice.name.includes('粵語')
-                      )
-                      .map(voice => (
-                        <option key={voice.name} value={voice.name}>
-                          {voice.name} ({voice.lang})
-                        </option>
-                      ))
-                    }
-                    {/* Fallback options if no voices are found */}
-                    <option value="Google Cantonese (Hong Kong)">Google Cantonese (Hong Kong)</option>
+                    <optgroup label="Available on Your Device">
+                      {speechSynthesisRef.current && speechSynthesisRef.current.getVoices()
+                        .filter(voice => {
+                          // Filter for Cantonese and Chinese voices
+                          return voice.lang === 'zh-HK' || 
+                                 voice.lang === 'zh-TW' || 
+                                 voice.lang === 'zh-CN' || 
+                                 voice.name.includes('Cantonese') || 
+                                 voice.name.includes('粵語') || 
+                                 voice.name.includes('Chinese') || 
+                                 voice.name.includes('中文');
+                        })
+                        .sort((a, b) => {
+                          // Sort by language code (zh-HK first) then by name
+                          if (a.lang === 'zh-HK' && b.lang !== 'zh-HK') return -1;
+                          if (a.lang !== 'zh-HK' && b.lang === 'zh-HK') return 1;
+                          if (a.lang === 'zh-TW' && b.lang !== 'zh-TW') return -1;
+                          if (a.lang !== 'zh-TW' && b.lang === 'zh-TW') return 1;
+                          return a.name.localeCompare(b.name);
+                        })
+                        .map(voice => (
+                          <option key={voice.name} value={voice.name}>
+                            {voice.name} ({voice.lang})
+                          </option>
+                        ))
+                      }
+                    </optgroup>
                   </select>
                   <button 
                     className="test-voice-button"
                     onClick={() => speakText('你好，這是粵語語音測試。')}
                   >
-                    Test Voice
+                    <span role="img" aria-label="Speaker">🔊</span> Test Voice
                   </button>
+                </div>
+
+                <div className="voice-setting-info">
+                  <p><strong>Note:</strong> Voice availability depends on your device and browser. If you don't see a voice in the list, it's not available on your current device.</p>
+                  <p>Default voices are automatically selected for the best experience.</p>
                 </div>
               </div>
             </div>
