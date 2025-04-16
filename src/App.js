@@ -47,24 +47,92 @@ function App() {
     // Initialize speech synthesis
     speechSynthesisRef.current = window.speechSynthesis;
     
+    // Force unlock audio on iOS devices
+    const unlockAudio = () => {
+      // Create and play a silent sound to unlock audio on iOS
+      const silentSound = new SpeechSynthesisUtterance(' ');
+      silentSound.volume = 0;
+      speechSynthesisRef.current.speak(silentSound);
+      
+      // Also try to resume AudioContext if available
+      if (typeof window !== 'undefined' && window.AudioContext) {
+        const audioContext = new window.AudioContext();
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+      }
+      
+      // Remove the event listeners after first user interaction
+      document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('click', unlockAudio);
+    };
+    
+    // Add event listeners to unlock audio on first user interaction
+    document.addEventListener('touchstart', unlockAudio);
+    document.addEventListener('click', unlockAudio);
+    
+    // Detect device type for better voice selection
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
     // Load voices when they are available
     const loadVoices = () => {
       const voices = speechSynthesisRef.current.getVoices();
       console.log('Available voices loaded:', voices.length);
       
+      // Filter for English voices
+      const englishVoices = voices.filter(voice => 
+        voice.lang.startsWith('en') || 
+        voice.name.toLowerCase().includes('english')
+      );
+      
       // Filter for Cantonese voices (zh-HK)
       const cantoneseVoices = voices.filter(voice => 
         voice.lang === 'zh-HK' || 
         voice.name.includes('Cantonese') || 
-        voice.name.includes('粵語')
+        voice.name.includes('粵語') ||
+        voice.lang === 'zh-TW' || // Fallback to Traditional Chinese
+        voice.lang === 'zh-CN'    // Last resort fallback to Mandarin
       );
       
+      console.log('English voices:', englishVoices.map(v => `${v.name} (${v.lang})`));
       console.log('Cantonese voices:', cantoneseVoices.map(v => `${v.name} (${v.lang})`));
       
-      // If no Cantonese voice is selected yet but we found some, select the first one
-      if (cantoneseVoices.length > 0 && (!cantoneseVoice || cantoneseVoice === 'Google Cantonese (Hong Kong)')) {
-        setCantoneseVoice(cantoneseVoices[0].name);
-        console.log('Selected Cantonese voice:', cantoneseVoices[0].name);
+      // Select appropriate voices based on device/browser
+      let defaultEnglishVoice = '';
+      let defaultCantoneseVoice = '';
+      
+      if (isIOS) {
+        // iOS typically has these voices
+        defaultEnglishVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Daniel'))?.name || 
+                             englishVoices[0]?.name || '';
+        
+        defaultCantoneseVoice = voices.find(v => v.name.includes('Sin-ji'))?.name || 
+                               cantoneseVoices[0]?.name || 
+                               voices.find(v => v.lang === 'zh-TW')?.name || 
+                               voices.find(v => v.lang === 'zh-CN')?.name || '';
+      } else if (isMobile) {
+        // Android or other mobile
+        defaultEnglishVoice = englishVoices[0]?.name || '';
+        defaultCantoneseVoice = cantoneseVoices[0]?.name || '';
+      } else {
+        // Desktop - prefer Google voices if available
+        defaultEnglishVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))?.name || 
+                             englishVoices[0]?.name || '';
+        
+        defaultCantoneseVoice = voices.find(v => v.name.includes('Google') && (v.lang === 'zh-HK' || v.name.includes('Cantonese')))?.name || 
+                               cantoneseVoices[0]?.name || '';
+      }
+      
+      // Set the selected voices if they're not already set or if they're not available
+      if (!englishVoice || !voices.some(v => v.name === englishVoice)) {
+        console.log('Setting default English voice:', defaultEnglishVoice);
+        setEnglishVoice(defaultEnglishVoice || englishVoices[0]?.name || 'Google US English');
+      }
+      
+      if (!cantoneseVoice || !voices.some(v => v.name === cantoneseVoice)) {
+        console.log('Setting default Cantonese voice:', defaultCantoneseVoice);
+        setCantoneseVoice(defaultCantoneseVoice || cantoneseVoices[0]?.name || 'Google Cantonese (Hong Kong)');
       }
     };
     
@@ -200,6 +268,9 @@ function App() {
   const speakText = (text) => {
     if (isMuted) return;
     
+    // Check if we're on a mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
     // Cancel any ongoing speech
     speechSynthesisRef.current.cancel();
     
@@ -216,6 +287,26 @@ function App() {
     } else {
       selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
       langCode = 'zh-HK';
+    }
+    
+    // If no voice is found, try to find a fallback
+    if (!selectedVoice) {
+      if (language === 'english') {
+        // Try to find any English voice
+        selectedVoice = voices.find(voice => 
+          voice.lang.startsWith('en') || 
+          voice.name.toLowerCase().includes('english')
+        );
+      } else {
+        // Try to find any Chinese voice
+        selectedVoice = voices.find(voice => 
+          voice.lang === 'zh-HK' || 
+          voice.lang === 'zh-TW' || 
+          voice.lang === 'zh-CN' || 
+          voice.name.includes('Chinese') ||
+          voice.name.includes('Cantonese')
+        );
+      }
     }
     
     // Set speaking to true at the beginning
@@ -302,6 +393,19 @@ function App() {
       }
       
       utterance.rate = 0.9; // Slightly slower for children
+      utterance.volume = 1.0; // Maximum volume for better audibility on mobile
+      
+      // Special handling for mobile devices
+      if (isMobile) {
+        // On mobile, we need to make sure audio context is resumed
+        // This helps with voice output on iOS devices
+        if (typeof window !== 'undefined' && window.AudioContext) {
+          const audioContext = new window.AudioContext();
+          if (audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+        }
+      }
       
       // When this chunk ends, speak the next one
       utterance.onend = () => {
