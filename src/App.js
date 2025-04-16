@@ -309,6 +309,34 @@ function App() {
       const voices = speechSynthesisRef.current.getVoices();
       console.log('Available voices loaded:', voices.length);
 
+      // If no voices are available, try to force load them
+      if (voices.length === 0) {
+        console.log('No voices available, trying to force load them...');
+        // Try to trigger onvoiceschanged
+        const dummy = new SpeechSynthesisUtterance(' ');
+        speechSynthesisRef.current.speak(dummy);
+        speechSynthesisRef.current.cancel();
+        // Try again after a short delay
+        setTimeout(() => {
+          const forcedVoices = speechSynthesisRef.current.getVoices();
+          if (forcedVoices.length > 0) {
+            console.log('Successfully forced voices to load:', forcedVoices.length);
+            processVoices(forcedVoices);
+          }
+        }, 100);
+        return;
+      }
+
+      processVoices(voices);
+    };
+
+    // Process and select voices
+    const processVoices = (voices) => {
+      // Log all available voices
+      voices.forEach((voice, i) => {
+        console.log(`Voice ${i}: ${voice.name} (${voice.lang})`);
+      });
+
       // Filter for English voices
       const englishVoices = voices.filter(voice =>
         voice.lang.startsWith('en') ||
@@ -327,42 +355,60 @@ function App() {
       console.log('English voices:', englishVoices.map(v => `${v.name} (${v.lang})`));
       console.log('Cantonese voices:', cantoneseVoices.map(v => `${v.name} (${v.lang})`));
 
-      // Select appropriate voices based on device/browser
-      let defaultEnglishVoice = '';
-      let defaultCantoneseVoice = '';
+      // Define preferred voice lists
+      const preferredEnglishVoices = [
+        'Google US English',
+        'Microsoft David',
+        'Microsoft Zira',
+        'Samantha',
+        'Alex'
+      ];
 
-      if (isIOS) {
-        // iOS typically has these voices
-        defaultEnglishVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Daniel'))?.name ||
-          englishVoices[0]?.name || '';
+      const preferredCantoneseVoices = [
+        'Google Cantonese (Hong Kong)',
+        'Sin-ji',
+        'Microsoft Tracy'
+      ];
 
-        defaultCantoneseVoice = voices.find(v => v.name.includes('Sin-ji'))?.name ||
-          cantoneseVoices[0]?.name ||
-          voices.find(v => v.lang === 'zh-TW')?.name ||
-          voices.find(v => v.lang === 'zh-CN')?.name || '';
-      } else if (isMobile) {
-        // Android or other mobile
-        defaultEnglishVoice = englishVoices[0]?.name || '';
-        defaultCantoneseVoice = cantoneseVoices[0]?.name || '';
-      } else {
-        // Desktop - prefer Google voices if available
-        defaultEnglishVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))?.name ||
-          englishVoices[0]?.name || '';
-
-        defaultCantoneseVoice = voices.find(v => v.name.includes('Google') && (v.lang === 'zh-HK' || v.name.includes('Cantonese')))?.name ||
-          cantoneseVoices[0]?.name || '';
+      // Find best English voice
+      let bestEnglishVoice = null;
+      for (const voiceName of preferredEnglishVoices) {
+        bestEnglishVoice = voices.find(v => v.name.includes(voiceName));
+        if (bestEnglishVoice) break;
       }
 
-      // Set the selected voices if they're not already set or if they're not available
-      if (!englishVoice || !voices.some(v => v.name === englishVoice)) {
-        console.log('Setting default English voice:', defaultEnglishVoice);
-        setEnglishVoice(defaultEnglishVoice || englishVoices[0]?.name || 'Google US English');
+      // Find best Cantonese voice
+      let bestCantoneseVoice = null;
+      for (const voiceName of preferredCantoneseVoices) {
+        bestCantoneseVoice = voices.find(v => v.name.includes(voiceName));
+        if (bestCantoneseVoice) break;
       }
 
-      if (!cantoneseVoice || !voices.some(v => v.name === cantoneseVoice)) {
-        console.log('Setting default Cantonese voice:', defaultCantoneseVoice);
-        setCantoneseVoice(defaultCantoneseVoice || cantoneseVoices[0]?.name || 'Google Cantonese (Hong Kong)');
+      // If no preferred voices found, use first available by language
+      if (!bestEnglishVoice) {
+        bestEnglishVoice = englishVoices[0] || voices.find(v => v.lang === 'en-US') || voices[0];
       }
+
+      if (!bestCantoneseVoice) {
+        bestCantoneseVoice = cantoneseVoices[0] || voices.find(v => v.lang === 'zh-HK' || v.lang === 'zh-TW' || v.lang === 'zh-CN') || voices[0];
+      }
+
+      // Always set the voices, even if they're already set
+      if (bestEnglishVoice) {
+        console.log('Setting English voice to:', bestEnglishVoice.name);
+        setEnglishVoice(bestEnglishVoice.name);
+      }
+
+      if (bestCantoneseVoice) {
+        console.log('Setting Cantonese voice to:', bestCantoneseVoice.name);
+        setCantoneseVoice(bestCantoneseVoice.name);
+      }
+
+      // Test that voices are working by speaking a silent utterance
+      const testUtterance = new SpeechSynthesisUtterance(' ');
+      testUtterance.volume = 0;
+      if (bestEnglishVoice) testUtterance.voice = bestEnglishVoice;
+      speechSynthesisRef.current.speak(testUtterance);
     };
 
     // Set up the voices changed event
@@ -388,7 +434,7 @@ function App() {
         }
       }
     };
-  }, [language, cantoneseVoice]);
+  }, []);
 
   // Effect to handle automatic submission after voice input
   useEffect(() => {
@@ -412,33 +458,12 @@ function App() {
           setError('');
           console.log('Auto-submitting after voice input completion');
           
-          // Force a mock response in preview mode to demonstrate auto-submit
-          const mockAnswer = language === 'english' ? 
-            `I heard you say: "${question.trim()}". Auto-submission is working!` : 
-            `我聽到你說: "${question.trim()}". 自動提交功能正常!`;
-          
-          setIsLoading(true);
-          
-          // Simulate API delay
-          setTimeout(() => {
-            setAnswer(mockAnswer);
-            setIsLoading(false);
-            
-            // Add to question history
-            setQuestionHistory([
-              { question: question.trim(), answer: mockAnswer, timestamp: new Date().toISOString() },
-              ...questionHistory
-            ]);
-            
-            // Speak the answer if not muted
-            if (!isMuted) {
-              speakText(mockAnswer);
-            }
-          }, 1000);
+          // Call the handleSubmit function to submit to the real API
+          handleSubmit();
         }, 2000); // 2 second delay
       }
     }
-  }, [isListening, question]);
+  }, [isListening, question, language, handleSubmit]);
 
   // UI text based on language
   const englishUIText = {
