@@ -36,7 +36,7 @@ exports.handler = async function(event, context) {
     console.log(`Content filtering level: ${contentFiltering}, Time limit: ${timeLimit} minutes`);
     console.log(`Banned words: ${bannedWords.join(', ')}`);
     
-    // Check for banned words in the question
+    // Check for banned words in the question (works for both English and Cantonese)
     const containsBannedWord = bannedWords.some(word => 
       question.toLowerCase().includes(word.toLowerCase())
     );
