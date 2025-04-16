@@ -40,9 +40,9 @@ function App() {
   const [bannedWords, setBannedWords] = useState([]);
   const [newBannedWord, setNewBannedWord] = useState('');
   
-  // Voice profile state - using more generic names that are likely to exist on most devices
-  const [englishVoice, setEnglishVoice] = useState('en-US');
-  const [cantoneseVoice, setCantoneseVoice] = useState('zh-HK');
+  // Voice profile state - using specific high-quality voices as defaults
+  const [englishVoice, setEnglishVoice] = useState('Google US English');
+  const [cantoneseVoice, setCantoneseVoice] = useState('Google Cantonese (Hong Kong)');
   
   // Device detection state
   const [isMobile, setIsMobile] = useState(false);
@@ -60,7 +60,7 @@ function App() {
   // Create a ref to hold the speech recognition object
   const speechRecognitionRef = useRef(null);
   
-  // Detect device type on component mount
+  // Detect device type and initialize voices on component mount
   useEffect(() => {
     setIsMobile(isMobileDevice());
     setIsIOS(isIOSDevice());
@@ -73,6 +73,71 @@ function App() {
         console.log('AudioContext initialized for mobile device');
       } catch (e) {
         console.error('Could not initialize AudioContext:', e);
+      }
+    }
+    
+    // Initialize speech synthesis and preload voices
+    if (speechSynthesisRef.current) {
+      // Force load voices at startup
+      if (speechSynthesisRef.current.getVoices().length === 0) {
+        speechSynthesisRef.current.onvoiceschanged = () => {
+          const voices = speechSynthesisRef.current.getVoices();
+          console.log(`Voices loaded on startup: ${voices.length}`);
+          
+          // Log all available voices for debugging
+          if (voices.length > 0) {
+            console.log('Available voices:');
+            voices.forEach((voice, index) => {
+              console.log(`${index}: ${voice.name} (${voice.lang})`);
+            });
+          }
+          
+          // Set better default voices based on what's available
+          const findBetterVoices = () => {
+            const voices = speechSynthesisRef.current.getVoices();
+            
+            // Find best English voice
+            const preferredEnglishVoices = [
+              'Google US English',
+              'Microsoft David - English (United States)',
+              'Alex',
+              'Samantha'
+            ];
+            
+            for (const voiceName of preferredEnglishVoices) {
+              const found = voices.find(v => v.name.includes(voiceName));
+              if (found) {
+                setEnglishVoice(found.name);
+                console.log(`Set default English voice to: ${found.name}`);
+                break;
+              }
+            }
+            
+            // Find best Cantonese voice
+            const preferredCantoneseVoices = [
+              'Sin-ji',
+              'Google Cantonese',
+              'Microsoft Tracy - Chinese (Hong Kong)'
+            ];
+            
+            for (const voiceName of preferredCantoneseVoices) {
+              const found = voices.find(v => v.name.includes(voiceName));
+              if (found) {
+                setCantoneseVoice(found.name);
+                console.log(`Set default Cantonese voice to: ${found.name}`);
+                break;
+              }
+            }
+          };
+          
+          // Set better default voices
+          findBetterVoices();
+        };
+        
+        // Trigger onvoiceschanged
+        const dummy = new SpeechSynthesisUtterance(' ');
+        speechSynthesisRef.current.speak(dummy);
+        speechSynthesisRef.current.cancel();
       }
     }
   }, []);
@@ -535,58 +600,86 @@ function App() {
 
     if (!isCantonese) {
       // For English text
-      // Log the current English voice setting
       console.log('Using English voice setting:', englishVoice);
-
-      // Try to find the selected English voice
+      
+      // Try to find the exact voice by name
       selectedVoice = voices.find(voice => voice.name === englishVoice);
-
-      // If not found, try to find any English voice
+      console.log('Found exact English voice match:', selectedVoice ? selectedVoice.name : 'None');
+      
+      // If not found, try to find by language code
       if (!selectedVoice) {
-        console.log('Selected English voice not found, looking for alternatives');
+        selectedVoice = voices.find(voice => voice.lang === 'en-US');
+        console.log('Found en-US voice:', selectedVoice ? selectedVoice.name : 'None');
+      }
+      
+      // If still not found, try high-quality voices
+      if (!selectedVoice) {
+        const preferredVoices = [
+          'Google US English',
+          'Microsoft David',
+          'Microsoft Zira',
+          'Alex',
+          'Samantha'
+        ];
+        
+        for (const voiceName of preferredVoices) {
+          const found = voices.find(voice => voice.name.includes(voiceName));
+          if (found) {
+            selectedVoice = found;
+            console.log(`Found preferred voice: ${selectedVoice.name}`);
+            break;
+          }
+        }
+      }
+      
+      // If still not found, try device-specific voices
+      if (!selectedVoice) {
         if (isIOS) {
-          // Try iOS specific voices first
           selectedVoice = voices.find(voice => 
             voice.name.includes('Samantha') || 
-            voice.name.includes('Daniel') ||
-            voice.name.includes('Karen') ||
             voice.name.includes('Alex'));
+          console.log('Found iOS voice:', selectedVoice ? selectedVoice.name : 'None');
         } else if (isAndroid) {
-          // Try Android specific voices first
-          selectedVoice = voices.find(voice => 
-            voice.lang === 'en-US' || 
-            voice.lang === 'en-GB');
+          selectedVoice = voices.find(voice => voice.lang === 'en-US' || voice.lang === 'en-GB');
+          console.log('Found Android voice:', selectedVoice ? selectedVoice.name : 'None');
         }
-        
-        // If still not found, try any English voice
-        if (!selectedVoice) {
-          selectedVoice = voices.find(voice =>
-            voice.lang.startsWith('en') ||
-            voice.name.toLowerCase().includes('english')
-          );
-        }
-        
-        // Last resort: use any available voice and set lang parameter
-        if (!selectedVoice && voices.length > 0) {
-          console.log('Using first available voice as fallback');
-          selectedVoice = voices[0];
-        }
+      }
+      
+      // Last resort: any English voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice =>
+          voice.lang.startsWith('en') ||
+          voice.name.toLowerCase().includes('english')
+        );
+        console.log('Found any English voice:', selectedVoice ? selectedVoice.name : 'None');
+      }
+      
+      // Absolute last resort: use any available voice
+      if (!selectedVoice && voices.length > 0) {
+        selectedVoice = voices[0];
+        console.log(`Using first available voice as fallback: ${selectedVoice.name}`);
       }
     } else {
       // For Cantonese text
-      // Log the current Cantonese voice setting
       console.log('Using Cantonese voice setting:', cantoneseVoice);
-
-      // Try to find a voice with the exact language code first
-      selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
-      console.log('Found zh-HK voice:', selectedVoice ? selectedVoice.name : 'None');
       
-      // If not found, try to find the selected Cantonese voice by name
+      // Try to find the exact voice by name
+      selectedVoice = voices.find(voice => voice.name === cantoneseVoice);
+      console.log('Found exact Cantonese voice match:', selectedVoice ? selectedVoice.name : 'None');
+      
+      // If not found, try to find a voice with the exact language code
       if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.name === cantoneseVoice || 
-                                           voice.name.includes('Chinese') || 
-                                           voice.name.includes('Cantonese'));
-        console.log('Found by name:', selectedVoice ? selectedVoice.name : 'None');
+        selectedVoice = voices.find(voice => voice.lang === 'zh-HK');
+        console.log('Found zh-HK voice:', selectedVoice ? selectedVoice.name : 'None');
+      }
+      
+      // If still not found, try to find by partial name match
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => 
+          voice.name.includes('Chinese') || 
+          voice.name.includes('Cantonese') ||
+          voice.name.includes('Sin-ji'));
+        console.log('Found by partial name:', selectedVoice ? selectedVoice.name : 'None');
       }
 
       // If still not found, try to find any Chinese voice
@@ -974,39 +1067,15 @@ function App() {
     setError('');
 
     try {
-      // For demo/development purposes, if API is not available, show a mock response
-      // This ensures auto-submission works even without API connectivity
+      // Check API connection but proceed with real API call regardless
+      // This ensures auto-submission always tries to reach the real API
       let isConnected = true;
       try {
         isConnected = await checkAPIConnection();
+        console.log('API connection check result:', isConnected);
       } catch (connectionError) {
-        console.warn('API connection check failed, will use mock response if needed');
-        isConnected = false;
-      }
-      
-      if (!isConnected) {
-        console.log('API not reachable, using mock response for demo');
-        // Use mock response for demo/development
-        setTimeout(() => {
-          const mockAnswer = language === 'english' ? 
-            'This is a demo response. The API is currently unavailable, but your voice input auto-submission is working correctly!' : 
-            '這是一個演示回應。API目前不可用，但您的語音輸入自動提交功能正常工作！';
-          
-          setAnswer(mockAnswer);
-          setIsLoading(false);
-          
-          // Add to question history
-          setQuestionHistory([
-            { question, answer: mockAnswer, timestamp: new Date().toISOString() },
-            ...questionHistory
-          ]);
-          
-          // Speak the answer if not muted
-          if (!isMuted) {
-            speakText(mockAnswer);
-          }
-        }, 1000);
-        return;
+        console.warn('API connection check failed, will try API call anyway');
+        isConnected = true; // Always try the API call
       }
       
       const response = await fetch('/.netlify/functions/ask', {
